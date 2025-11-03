@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 text-center">
+        <h1 class="display-4 mb-4">Welcome to Shadowrun Campaign Manager</h1>
+        <p class="lead">Manage your Shadowrun characters and create dynamic campaign maps</p>
+    </div>
+</div>
+
+{% if user.is_authenticated %}
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">Characters</h5>
+                <p class="card-text">Create and manage your Shadowrun characters</p>
+                <a href="{% url 'characters:list' %}" class="btn btn-primary">View Characters</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">Maps</h5>
+                <p class="card-text">Build and generate campaign maps</p>
+                <a href="{% url 'maps:list' %}" class="btn btn-primary">View Maps</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">Campaigns</h5>
+                <p class="card-text">Organize and manage your campaigns</p>
+                <a href="{% url 'campaigns:list' %}" class="btn btn-primary">View Campaigns</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mt-5">
+    <div class="col-md-6 offset-md-3 text-center">
+        <p>Please log in or register to access the campaign manager</p>
+        <a href="{% url 'accounts:login' %}" class="btn btn-primary me-2">Login</a>
+        <a href="{% url 'accounts:register' %}" class="btn btn-secondary">Register</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

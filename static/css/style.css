@@ -1,0 +1,61 @@
+/* Custom styles for Shadowrun Campaign Manager */
+
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --dark-bg: #212529;
+    --light-bg: #f8f9fa;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.card {
+    transition: transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn {
+    transition: all 0.3s ease;
+}
+
+footer {
+    margin-top: auto;
+}
+
+/* Character card styles */
+.character-card {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Map canvas styles */
+.map-canvas {
+    border: 2px solid var(--secondary-color);
+    border-radius: 8px;
+    background-color: var(--light-bg);
+}
+
+/* Campaign styles */
+.campaign-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}

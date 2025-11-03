@@ -1,0 +1,9 @@
+Django==5.0.1
+django-crispy-forms>=2.3
+crispy-bootstrap5==2024.10
+Pillow==10.2.0
+python-dotenv==1.0.0
+
+# For production MySQL support, uncomment and install system dependencies:
+# mysqlclient==2.2.1
+# Note: Requires apt install libmysqlclient-dev pkg-config

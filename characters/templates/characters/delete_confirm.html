@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete {{ character.name }}? - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Confirm Deletion</h4>
+            </div>
+            <div class="card-body">
+                <p>Are you sure you want to delete <strong>{{ character.name }}</strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <h6>Character Details:</h6>
+                        <p>
+                            <strong>Name:</strong> {{ character.name }}<br>
+                            <strong>Race:</strong> {{ character.get_race_display }}<br>
+                            <strong>Archetype:</strong> {{ character.get_archetype_display }}<br>
+                            <strong>Created:</strong> {{ character.created_at|date:"F d, Y" }}
+                        </p>
+                    </div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'characters:detail' character.pk %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">Yes, Delete Character</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

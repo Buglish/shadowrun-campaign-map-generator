@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ character.name }} - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 offset-lg-1">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>{{ character.name }}</h1>
+            <div>
+                <a href="{% url 'characters:edit' character.pk %}" class="btn btn-outline-primary">Edit</a>
+                <a href="{% url 'characters:list' %}" class="btn btn-outline-secondary">Back to List</a>
+            </div>
+        </div>
+
+        <!-- Basic Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Basic Information</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Race:</strong> {{ character.get_race_display }}</p>
+                        <p><strong>Archetype:</strong> {{ character.get_archetype_display }}</p>
+                        <p><strong>Role:</strong> {{ character.get_role_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Essence:</strong> {{ character.essence }}</p>
+                        <p><strong>Edge:</strong> {{ character.edge }}</p>
+                        {% if character.magic > 0 %}
+                            <p><strong>Magic:</strong> {{ character.magic }}</p>
+                        {% endif %}
+                        {% if character.resonance > 0 %}
+                            <p><strong>Resonance:</strong> {{ character.resonance }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attributes -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Attributes</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p><strong>Body:</strong> {{ character.body }}</p>
+                        <p><strong>Agility:</strong> {{ character.agility }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Reaction:</strong> {{ character.reaction }}</p>
+                        <p><strong>Strength:</strong> {{ character.strength }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Charisma:</strong> {{ character.charisma }}</p>
+                        <p><strong>Intuition:</strong> {{ character.intuition }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Logic:</strong> {{ character.logic }}</p>
+                        <p><strong>Willpower:</strong> {{ character.willpower }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Priorities -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Priorities</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Metatype:</strong> {{ character.get_metatype_priority_display }}</p>
+                        <p><strong>Attributes:</strong> {{ character.get_attributes_priority_display }}</p>
+                        <p><strong>Magic/Resonance:</strong> {{ character.get_magic_priority_display }}</p>
+                        <p><strong>Skills:</strong> {{ character.get_skills_priority_display }}</p>
+                        <p><strong>Resources:</strong> {{ character.get_resources_priority_display }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources & Karma -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-warning">
+                        <h5 class="mb-0">Resources & Karma</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Starting Resources:</strong> {{ character.starting_resources|default:"0" }} ¥</p>
+                        <p><strong>Current Resources:</strong> {{ character.current_resources|default:"0" }} ¥</p>
+                        <p><strong>Karma Total:</strong> {{ character.karma_total|default:"0" }}</p>
+                        <p><strong>Karma Spent:</strong> {{ character.karma_spent|default:"0" }}</p>
+                        <p><strong>Karma Remaining:</strong> {{ character.karma_remaining|default:"0" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Qualities -->
+        {% if qualities %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0">Qualities</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Positive Qualities</h5>
+                        <ul>
+                            {% for cq in qualities %}
+                                {% if cq.quality.quality_type == 'positive' %}
+                                    <li>
+                                        <strong>{{ cq.quality.name }}</strong> ({{ cq.quality.karma_cost }} karma)<br>
+                                        <small class="text-muted">{{ cq.quality.description }}</small>
+                                    </li>
+                                {% endif %}
+                            {% empty %}
+                                <li class="text-muted">No positive qualities</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Negative Qualities</h5>
+                        <ul>
+                            {% for cq in qualities %}
+                                {% if cq.quality.quality_type == 'negative' %}
+                                    <li>
+                                        <strong>{{ cq.quality.name }}</strong> (+{{ cq.quality.karma_cost|abs }} karma)<br>
+                                        <small class="text-muted">{{ cq.quality.description }}</small>
+                                    </li>
+                                {% endif %}
+                            {% empty %}
+                                <li class="text-muted">No negative qualities</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Equipment -->
+        {% if equipment %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">Equipment</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Quantity</th>
+                                <th>Cost</th>
+                                <th>Essence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in equipment %}
+                            <tr>
+                                <td>{{ item.gear.name }}</td>
+                                <td>{{ item.gear.get_category_display }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.total_cost }} ¥</td>
+                                <td>{{ item.gear.essence_cost }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Background & History -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Background & History</h4>
+            </div>
+            <div class="card-body">
+                {% if character.background %}
+                    <p><strong>Background:</strong></p>
+                    <p>{{ character.background|linebreaks }}</p>
+                {% endif %}
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        {% if character.birthplace %}
+                            <p><strong>Birthplace:</strong> {{ character.birthplace }}</p>
+                        {% endif %}
+                        {% if character.raised_location %}
+                            <p><strong>Raised:</strong> {{ character.raised_location }}</p>
+                        {% endif %}
+                        {% if character.trained_location %}
+                            <p><strong>Trained:</strong> {{ character.trained_location }}</p>
+                        {% endif %}
+                        {% if character.current_location %}
+                            <p><strong>Current Location:</strong> {{ character.current_location }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if character.dark_aspects_feeling %}
+                            <p><strong>Views on the Shadows:</strong></p>
+                            <p>{{ character.dark_aspects_feeling|linebreaks }}</p>
+                        {% endif %}
+                        {% if character.wetwork_attitude %}
+                            <p><strong>Wetwork Attitude:</strong></p>
+                            <p>{{ character.wetwork_attitude|linebreaks }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

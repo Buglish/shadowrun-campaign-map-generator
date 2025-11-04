@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create Character - Step {{ step }} - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <h1 class="mb-4">Create Character: {{ step_name }}</h1>
+
+        <!-- Progress Bar -->
+        <div class="mb-4">
+            <div class="progress" style="height: 30px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width: {{ step|mul:12.5 }}%"
+                     aria-valuenow="{{ step }}" aria-valuemin="0" aria-valuemax="8">
+                    Step {{ step }} of 8
+                </div>
+            </div>
+        </div>
+
+        <!-- Step Navigation -->
+        <div class="mb-4">
+            <small class="text-muted">
+                {% if step == 1 %}Basic Info
+                {% elif step == 2 %}Role & History
+                {% elif step == 3 %}Priorities
+                {% elif step == 4 %}Qualities
+                {% elif step == 5 %}Attributes
+                {% elif step == 6 %}Karma
+                {% elif step == 7 %}Gear
+                {% elif step == 8 %}Finishing Touches
+                {% endif %}
+            </small>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {{ form|crispy }}
+
+                    <div class="d-flex justify-content-between mt-4">
+                        {% if step > 1 %}
+                            <a href="{% url 'characters:create_step'|add:step|add:'-1'|stringformat:'d' %}"
+                               class="btn btn-secondary">
+                                &larr; Previous
+                            </a>
+                        {% else %}
+                            <a href="{% url 'characters:list' %}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-primary">
+                            {% if step == 8 %}
+                                Complete Character
+                            {% else %}
+                                Next &rarr;
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Text for Each Step -->
+        <div class="mt-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">Step {{ step }} Guide:</h6>
+                    <p class="card-text small">
+                        {% if step == 1 %}
+                            Choose your character's name, race (metatype), and archetype. This defines the basic framework of who your character is.
+                        {% elif step == 2 %}
+                            Define your character's role in the team and their background. Where were they born? Raised? Trained? How do they feel about the shadows?
+                        {% elif step == 3 %}
+                            Assign priorities (A through E) to different aspects of your character. Each priority can only be used once. Higher priorities give you more in that category.
+                        {% elif step == 4 %}
+                            Select positive and negative qualities for your character. Positive qualities cost karma, while negative qualities give you additional karma.
+                        {% elif step == 5 %}
+                            Allocate points to your character's attributes. These define your character's physical and mental capabilities.
+                        {% elif step == 6 %}
+                            Manage your character's karma. Karma can be spent on improving skills, attributes, and purchasing abilities.
+                        {% elif step == 7 %}
+                            Purchase gear and equipment for your character. This includes weapons, armor, cyberware, and other essentials.
+                        {% elif step == 8 %}
+                            Final touches! Set your starting resources and essence. Review everything before completing character creation.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

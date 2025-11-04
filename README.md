@@ -153,23 +153,26 @@ dnd-campaign-map-generator/
 - [x] Base templates with Bootstrap 5
 - [x] Static files configuration
 - [x] Database configuration (SQLite & MySQL support)
+- [x] Character data models (Shadowrun attributes, skills, etc.)
+- [x] Character creation wizard (8-step process)
+- [x] Character sheet interface
+- [x] Character equipment and gear management
+- [x] Qualities (positive/negative traits) system
+- [x] Cyberware and bioware tracking
 
 ### In Progress
-- [ ] Character data models (Shadowrun attributes, skills, etc.)
-- [ ] Character creation and registration forms
-- [ ] Character sheet interface
-
-### Planned
 - [ ] Map data models
 - [ ] Basic map builder interface
+
+### Planned
 - [ ] Map generation algorithms
 - [ ] Real-time map sharing
 - [ ] Campaign session management
 - [ ] Dice rolling integration
 - [ ] Combat tracker
 - [ ] NPC management
-- [ ] Character equipment management
-- [ ] Cyberware and bioware tracking
+- [ ] Character skills system
+- [ ] Magic and spell management
 
 ## Contributing
 

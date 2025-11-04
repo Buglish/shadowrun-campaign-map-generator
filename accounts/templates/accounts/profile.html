@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0">User Profile</h2>
+            </div>
+            <div class="card-body p-4">
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold">Username:</div>
+                    <div class="col-md-8">{{ user.username }}</div>
+                </div>
+
+                {% if user.email %}
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold">Email:</div>
+                    <div class="col-md-8">{{ user.email }}</div>
+                </div>
+                {% endif %}
+
+                {% if user.first_name or user.last_name %}
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold">Name:</div>
+                    <div class="col-md-8">{{ user.first_name }} {{ user.last_name }}</div>
+                </div>
+                {% endif %}
+
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold">Member Since:</div>
+                    <div class="col-md-8">{{ user.date_joined|date:"F d, Y" }}</div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold">Last Login:</div>
+                    <div class="col-md-8">{{ user.last_login|date:"F d, Y g:i A" }}</div>
+                </div>
+
+                <hr class="my-4">
+
+                <h4 class="mb-3">Quick Stats</h4>
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">0</h5>
+                                <p class="card-text text-muted">Characters</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">0</h5>
+                                <p class="card-text text-muted">Maps</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">0</h5>
+                                <p class="card-text text-muted">Campaigns</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <a href="{% url 'characters:list' %}" class="btn btn-primary">View Characters</a>
+                    <a href="{% url 'maps:list' %}" class="btn btn-secondary">View Maps</a>
+                    <a href="{% url 'campaigns:list' %}" class="btn btn-info">View Campaigns</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

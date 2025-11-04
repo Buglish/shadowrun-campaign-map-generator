@@ -66,6 +66,38 @@
             </div>
         </div>
 
+        <!-- Derived Attributes -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Derived Attributes</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h5>Initiative</h5>
+                        <p><strong>Base:</strong> {{ character.initiative_base }} + {{ character.initiative_dice }}d6</p>
+                        <p class="text-muted small">(Reaction + Intuition + dice)</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5>Condition Monitors</h5>
+                        <p><strong>Physical:</strong> {{ character.physical_damage }}/{{ character.physical_monitor_max }} boxes</p>
+                        <p><strong>Stun:</strong> {{ character.stun_damage }}/{{ character.stun_monitor_max }} boxes</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5>Limits</h5>
+                        <p><strong>Physical:</strong> {{ character.physical_limit }}</p>
+                        <p><strong>Mental:</strong> {{ character.mental_limit }}</p>
+                        <p><strong>Social:</strong> {{ character.social_limit }}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <p><strong>Armor Rating:</strong> {{ character.armor_rating }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <!-- Priorities -->
             <div class="col-md-6 mb-4">
@@ -100,6 +132,51 @@
             </div>
         </div>
 
+        <div class="row">
+            <!-- Physical Description -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Physical Description</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if character.age %}<p><strong>Age:</strong> {{ character.age }}</p>{% endif %}
+                        {% if character.sex %}<p><strong>Sex:</strong> {{ character.sex }}</p>{% endif %}
+                        {% if character.height %}<p><strong>Height:</strong> {{ character.height }}</p>{% endif %}
+                        {% if character.weight %}<p><strong>Weight:</strong> {{ character.weight }}</p>{% endif %}
+                        {% if character.eyes %}<p><strong>Eyes:</strong> {{ character.eyes }}</p>{% endif %}
+                        {% if character.hair %}<p><strong>Hair:</strong> {{ character.hair }}</p>{% endif %}
+                        {% if character.skin %}<p><strong>Skin:</strong> {{ character.skin }}</p>{% endif %}
+                        {% if character.distinguishing_features %}
+                            <p><strong>Distinguishing Features:</strong></p>
+                            <p>{{ character.distinguishing_features|linebreaks }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lifestyle & Reputation -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Lifestyle & Reputation</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Lifestyle</h6>
+                        <p><strong>Type:</strong> {{ character.get_lifestyle_display }}</p>
+                        {% if character.lifestyle_details %}
+                            <p>{{ character.lifestyle_details|linebreaks }}</p>
+                        {% endif %}
+
+                        <h6 class="mt-3">Reputation</h6>
+                        <p><strong>Street Cred:</strong> {{ character.street_cred }}</p>
+                        <p><strong>Notoriety:</strong> {{ character.notoriety }}</p>
+                        <p><strong>Public Awareness:</strong> {{ character.public_awareness }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Qualities -->
         {% if qualities %}
         <div class="card shadow mb-4">
@@ -129,7 +206,7 @@
                             {% for cq in qualities %}
                                 {% if cq.quality.quality_type == 'negative' %}
                                     <li>
-                                        <strong>{{ cq.quality.name }}</strong> (+{{ cq.quality.karma_cost|abs }} karma)<br>
+                                        <strong>{{ cq.quality.name }}</strong> (+{{ cq.quality.karma_cost }} karma)<br>
                                         <small class="text-muted">{{ cq.quality.description }}</small>
                                     </li>
                                 {% endif %}
@@ -158,6 +235,7 @@
                                 <th>Category</th>
                                 <th>Quantity</th>
                                 <th>Cost</th>
+                                <th>Stats</th>
                                 <th>Essence</th>
                             </tr>
                         </thead>
@@ -168,6 +246,17 @@
                                 <td>{{ item.gear.get_category_display }}</td>
                                 <td>{{ item.quantity }}</td>
                                 <td>{{ item.total_cost }} ¥</td>
+                                <td>
+                                    {% if item.gear.damage %}
+                                        <small><strong>DMG:</strong> {{ item.gear.damage }}</small><br>
+                                    {% endif %}
+                                    {% if item.gear.armor_penetration %}
+                                        <small><strong>AP:</strong> {{ item.gear.armor_penetration }}</small><br>
+                                    {% endif %}
+                                    {% if item.gear.armor_rating %}
+                                        <small><strong>Armor:</strong> {{ item.gear.armor_rating }}</small><br>
+                                    {% endif %}
+                                </td>
                                 <td>{{ item.gear.essence_cost }}</td>
                             </tr>
                             {% endfor %}
@@ -177,6 +266,168 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Skills -->
+        {% with skills=character.skills.all %}
+        {% if skills %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Skills</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Skill</th>
+                                <th>Category</th>
+                                <th>Rating</th>
+                                <th>Specialization</th>
+                                <th>Dice Pool</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for char_skill in skills %}
+                            <tr>
+                                <td>{{ char_skill.skill.name }}</td>
+                                <td>{{ char_skill.skill.get_category_display }}</td>
+                                <td>{{ char_skill.rating }}</td>
+                                <td>{{ char_skill.specialization|default:"-" }}</td>
+                                <td>{{ char_skill.dice_pool }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Contacts & Languages -->
+        <div class="row">
+            <!-- Contacts -->
+            {% with contacts=character.contacts.all %}
+            {% if contacts %}
+            <div class="col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Contacts</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for contact in contacts %}
+                        <div class="mb-3">
+                            <p class="mb-1"><strong>{{ contact.name }}</strong> (C{{ contact.connection }}/L{{ contact.loyalty }})</p>
+                            {% if contact.archetype %}<p class="mb-1 text-muted"><small>{{ contact.archetype }}</small></p>{% endif %}
+                            {% if contact.description %}<p class="mb-0"><small>{{ contact.description }}</small></p>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Languages -->
+            {% with languages=character.languages.all %}
+            {% if languages %}
+            <div class="col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Languages</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul>
+                            {% for lang in languages %}
+                            <li><strong>{{ lang.name }}:</strong> {{ lang.get_proficiency_display }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Magic Systems -->
+        {% with spells=character.spells.all adept_powers=character.adept_powers.all complex_forms=character.complex_forms.all %}
+        {% if spells or adept_powers or complex_forms %}
+        <div class="card shadow mb-4">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Magic & Resonance</h4>
+            </div>
+            <div class="card-body">
+                <!-- Spells -->
+                {% if spells %}
+                <h5>Spells</h5>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Spell</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th>Range</th>
+                                <th>Duration</th>
+                                <th>Drain</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for char_spell in spells %}
+                            <tr>
+                                <td>{{ char_spell.spell.name }}</td>
+                                <td>{{ char_spell.spell.get_category_display }}</td>
+                                <td>{{ char_spell.spell.get_spell_type_display }}</td>
+                                <td>{{ char_spell.spell.get_range_type_display }}</td>
+                                <td>{{ char_spell.spell.get_duration_display }}</td>
+                                <td>{{ char_spell.spell.drain }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Adept Powers -->
+                {% if adept_powers %}
+                <h5>Adept Powers</h5>
+                <ul>
+                    {% for power in adept_powers %}
+                    <li><strong>{{ power.power.name }}</strong> (Level {{ power.level }}) - {{ power.power.cost }} PP</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                <!-- Complex Forms -->
+                {% if complex_forms %}
+                <h5>Complex Forms</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Form</th>
+                                <th>Target</th>
+                                <th>Duration</th>
+                                <th>Fading</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in complex_forms %}
+                            <tr>
+                                <td>{{ form.form.name }}</td>
+                                <td>{{ form.form.get_target_display }}</td>
+                                <td>{{ form.form.get_duration_display }}</td>
+                                <td>{{ form.form.fading }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endwith %}
 
         <!-- Background & History -->
         <div class="card shadow mb-4">

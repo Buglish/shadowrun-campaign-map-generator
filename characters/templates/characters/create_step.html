@@ -12,7 +12,7 @@
         <div class="mb-4">
             <div class="progress" style="height: 30px;">
                 <div class="progress-bar" role="progressbar"
-                     style="width: {{ step|mul:12.5 }}%"
+                     style="width: {% widthratio step 8 100 %}%"
                      aria-valuenow="{{ step }}" aria-valuemin="0" aria-valuemax="8">
                     Step {{ step }} of 8
                 </div>
@@ -42,14 +42,23 @@
 
                     <div class="d-flex justify-content-between mt-4">
                         {% if step > 1 %}
-                            <a href="{% url 'characters:create_step'|add:step|add:'-1'|stringformat:'d' %}"
-                               class="btn btn-secondary">
-                                &larr; Previous
-                            </a>
+                            {% if step == 2 %}
+                                <a href="{% url 'characters:create_step1' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% elif step == 3 %}
+                                <a href="{% url 'characters:create_step2' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% elif step == 4 %}
+                                <a href="{% url 'characters:create_step3' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% elif step == 5 %}
+                                <a href="{% url 'characters:create_step4' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% elif step == 6 %}
+                                <a href="{% url 'characters:create_step5' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% elif step == 7 %}
+                                <a href="{% url 'characters:create_step6' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% elif step == 8 %}
+                                <a href="{% url 'characters:create_step7' %}" class="btn btn-secondary">&larr; Previous</a>
+                            {% endif %}
                         {% else %}
-                            <a href="{% url 'characters:list' %}" class="btn btn-secondary">
-                                Cancel
-                            </a>
+                            <a href="{% url 'characters:list' %}" class="btn btn-secondary">Cancel</a>
                         {% endif %}
 
                         <button type="submit" class="btn btn-primary">

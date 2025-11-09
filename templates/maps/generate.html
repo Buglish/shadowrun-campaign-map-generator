@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Generate Map - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Generate Map</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-magic"></i> Procedural Map Generation</h5>
+                        <p class="mb-0">
+                            Create a new map automatically using procedural generation.
+                            You can optionally provide a seed for reproducible results.
+                        </p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% crispy form %}
+                    </form>
+
+                    <hr>
+
+                    <div class="mt-3">
+                        <h5>Generation Algorithms</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Random:</strong> Simple random terrain distribution - good for outdoor areas</li>
+                            <li><strong>BSP (Binary Space Partitioning):</strong> Creates rooms connected by corridors - ideal for buildings and dungeons</li>
+                            <li><strong>Cellular Automata:</strong> Organic cave-like structures - perfect for natural caves and ruins</li>
+                            <li><strong>Random Walk:</strong> Creates winding paths and tunnels - great for underground passages</li>
+                            <li><strong>Maze:</strong> Generates complex mazes using recursive backtracking - challenging puzzle maps</li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-3">
+                        <h5>Map Types</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Urban:</strong> Streets, sidewalks, and buildings for city environments</li>
+                            <li><strong>Wilderness:</strong> Natural terrain with grass, forests, and water</li>
+                            <li><strong>Corporate Facility:</strong> Indoor floors, walls, and rooms</li>
+                            <li><strong>Underground/Sewer:</strong> Tunnels, caves, and underground passages</li>
+                            <li><strong>Mixed Environment:</strong> Combination of multiple terrain types</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-success mt-3">
+                        <strong>Tip:</strong> Different algorithms work better with different map types:
+                        <ul class="mb-0 mt-2">
+                            <li>BSP + Corporate = Office buildings with rooms</li>
+                            <li>Cellular Automata + Underground = Natural cave systems</li>
+                            <li>Random Walk + Underground = Winding sewer tunnels</li>
+                            <li>Maze + Corporate = Complex facility layouts</li>
+                        </ul>
+                    </div>
+
+                    <a href="{% url 'maps:list' %}" class="btn btn-secondary mt-3">
+                        <i class="bi bi-arrow-left"></i> Back to Maps
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Map - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h2 class="mb-0">Delete Map</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+
+                    <p>Are you sure you want to delete the map <strong>"{{ map.name }}"</strong>?</p>
+
+                    <div class="bg-light p-3 rounded mb-3">
+                        <p class="mb-1"><strong>Map Details:</strong></p>
+                        <ul class="mb-0">
+                            <li>Type: {{ map.get_map_type_display }}</li>
+                            <li>Size: {{ map.width }} x {{ map.height }} ({{ map.total_tiles }} tiles)</li>
+                            <li>Created: {{ map.created_at|date:"M d, Y" }}</li>
+                            <li>Last Updated: {{ map.updated_at|date:"M d, Y" }}</li>
+                        </ul>
+                    </div>
+
+                    <p class="text-danger">
+                        <i class="bi bi-info-circle"></i>
+                        This will permanently delete the map and all associated tiles and objects.
+                    </p>
+
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Map
+                        </button>
+                    </form>
+                    <a href="{% url 'maps:detail' map.pk %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

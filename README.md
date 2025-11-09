@@ -18,10 +18,24 @@ This application aims to provide a comprehensive platform for Shadowrun campaign
   - Character background and notes
 
 ### Game Master Features
-- **Map Builder**: Intuitive interface to create custom campaign maps
-- **Dynamic Map Generation**: Generate maps on the fly based on parameters
-- **Map Sharing**: Share maps with players during sessions
-- **Campaign Management**: Organize and manage multiple campaigns
+- **Map Builder**: Interactive visual interface to create and edit custom campaign maps
+  - Grid-based map editor with tile painting tools
+  - Support for multiple terrain types (urban, wilderness, corporate, underground, mixed)
+  - Place and manage map objects (NPCs, enemies, items, markers, etc.)
+  - Visual map display with color-coded tiles
+- **Dynamic Map Generation**: Procedurally generate maps using advanced algorithms
+  - **5 Generation Algorithms**:
+    - Random: Simple terrain distribution for outdoor areas
+    - BSP (Binary Space Partitioning): Creates rooms and corridors ideal for buildings
+    - Cellular Automata: Organic cave-like structures perfect for natural environments
+    - Random Walk: Winding paths and tunnels for underground passages
+    - Maze: Complex mazes using recursive backtracking
+  - 5 environment types with unique terrain distributions
+  - Configurable map dimensions (5-100 tiles)
+  - Seed-based generation for reproducible maps
+  - Generation presets for quick map creation
+- **Map Sharing**: Share maps with specific players or make them public
+- **Campaign Management**: Organize and manage multiple campaigns (coming soon)
 
 ## Technology Stack
 
@@ -143,6 +157,78 @@ dnd-campaign-map-generator/
 └── .gitignore               # Git ignore rules
 ```
 
+## Map System Features
+
+The map builder provides comprehensive tools for creating and managing campaign maps:
+
+### Map Models
+- **Map**: Main map entity with dimensions, type, ownership, and sharing settings
+- **MapTile**: Individual tiles with terrain types, walkability, transparency, and custom colors
+- **MapObject**: Placeable objects (NPCs, enemies, items, markers) with stats and visibility settings
+- **MapGenerationPreset**: Reusable presets for procedural map generation
+
+### Map Types
+- **Urban**: Streets, sidewalks, and buildings for city environments
+- **Wilderness**: Natural terrain with grass, forests, and water
+- **Corporate Facility**: Indoor spaces with floors, walls, doors, and elevators
+- **Underground/Sewer**: Tunnels, caves, and underground passages
+- **Mixed Environment**: Combination of multiple terrain types
+
+### Key Features
+- **Visual Grid Editor**: Interactive map display with color-coded tiles
+- **Terrain Painting**: Click-to-paint interface for changing tile types
+- **Advanced Procedural Generation**: Choose from 5 different algorithms
+  - **BSP**: Room-and-corridor layouts perfect for dungeons and buildings
+  - **Cellular Automata**: Organic cave systems with natural-looking structures
+  - **Random Walk**: Winding tunnels and passages
+  - **Maze**: Complex recursive mazes for puzzle-oriented maps
+  - **Random**: Simple distribution for outdoor environments
+- **Map Sharing**: Control visibility with public/private settings and user-specific sharing
+- **Object Placement**: Add and manage NPCs, enemies, items, and markers
+- **Customizable Dimensions**: Create maps from 5x5 to 100x100 tiles
+- **Reproducible Maps**: Use seeds to generate identical maps
+- **Admin Interface**: Full CRUD operations for all map-related models
+
+### Generation Algorithms Explained
+
+#### BSP (Binary Space Partitioning)
+Creates structured layouts with rooms connected by corridors. The algorithm recursively divides the map into smaller sections and places rooms in each section, then connects them with L-shaped corridors. Perfect for:
+- Office buildings and corporate facilities
+- Dungeons with distinct rooms
+- Structured facility layouts
+
+#### Cellular Automata
+Simulates natural cave formation through iterative rules. Starts with random noise and applies smoothing rules over multiple iterations to create organic, cave-like structures. Ideal for:
+- Natural cave systems
+- Underground ruins
+- Organic wilderness areas
+
+#### Random Walk
+Creates winding paths by randomly "walking" through the map, carving out tunnels as it goes. Sometimes creates wider passages for variety. Great for:
+- Sewer systems
+- Underground tunnels
+- Winding mountain paths
+
+#### Maze
+Uses recursive backtracking to create complex, puzzle-like mazes. Guarantees all areas are connected with exactly one path between any two points. Best for:
+- Puzzle-oriented challenge maps
+- Complex facility layouts
+- Labyrinthine dungeons
+
+#### Random Distribution
+Simple algorithm that randomly places different terrain types across the map. Good baseline for:
+- Open outdoor areas
+- Quick test maps
+- Areas with varied terrain
+
+### Access URLs
+- `/maps/` - List all accessible maps
+- `/maps/create/` - Create a new blank map
+- `/maps/generate/` - Generate a map procedurally (choose algorithm here)
+- `/maps/<id>/` - View and edit map in builder interface
+- `/maps/<id>/edit/` - Edit map settings
+- `/maps/<id>/delete/` - Delete a map
+
 ## Roadmap
 
 ### Completed
@@ -159,20 +245,34 @@ dnd-campaign-map-generator/
 - [x] Character equipment and gear management
 - [x] Qualities (positive/negative traits) system
 - [x] Cyberware and bioware tracking
-
-### In Progress
-- [ ] Map data models
-- [ ] Basic map builder interface
+- [x] Map data models (Map, MapTile, MapObject, MapGenerationPreset)
+- [x] Basic map builder interface with visual grid editor
+- [x] Map CRUD operations (create, read, update, delete)
+- [x] Map sharing system (public maps and user-specific sharing)
+- [x] Interactive tile painting tools
+- [x] Map object placement system
+- [x] Admin interface for map management
+- [x] Advanced map generation algorithms:
+  - [x] BSP (Binary Space Partitioning) for room-and-corridor layouts
+  - [x] Cellular Automata for organic cave systems
+  - [x] Random Walk for winding tunnels
+  - [x] Maze generation using recursive backtracking
+  - [x] Random distribution algorithm
 
 ### Planned
-- [ ] Map generation algorithms
-- [ ] Real-time map sharing
+- [ ] Algorithm customization parameters (room sizes, corridor widths, iteration counts)
+- [ ] Map generation preview before saving
+- [ ] Real-time collaborative map editing
+- [ ] AJAX-based tile editing (currently client-side only)
 - [ ] Campaign session management
 - [ ] Dice rolling integration
 - [ ] Combat tracker
-- [ ] NPC management
-- [ ] Character skills system
+- [ ] NPC management with character links
+- [ ] Enhanced character skills system
 - [ ] Magic and spell management
+- [ ] Map layers and fog of war
+- [ ] Token/character placement on maps
+- [ ] Grid measurement and distance tools
 
 ## Contributing
 

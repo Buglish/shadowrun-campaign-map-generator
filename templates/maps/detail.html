@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ map.name }} - Map Builder{% endblock %}
+
+{% block extra_css %}
+<style>
+    .map-container {
+        overflow: auto;
+        border: 2px solid #333;
+        background-color: #1a1a1a;
+        max-height: 70vh;
+        position: relative;
+    }
+
+    .map-grid {
+        display: inline-grid;
+        gap: 1px;
+        background-color: #000;
+        padding: 10px;
+    }
+
+    .map-tile {
+        width: {{ map.tile_size }}px;
+        height: {{ map.tile_size }}px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        cursor: pointer;
+        transition: all 0.1s;
+    }
+
+    .map-tile:hover {
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: scale(1.05);
+        z-index: 10;
+    }
+
+    .map-object {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5em;
+        pointer-events: none;
+    }
+
+    .terrain-selector {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .terrain-option {
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 3px;
+        margin-bottom: 2px;
+    }
+
+    .terrain-option:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .terrain-option.active {
+        background-color: rgba(13, 110, 253, 0.25);
+        border: 2px solid #0d6efd;
+    }
+
+    .map-info-panel {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+
+    .legend-item {
+        display: inline-block;
+        margin-right: 15px;
+        margin-bottom: 5px;
+    }
+
+    .legend-color {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 1px solid #000;
+        vertical-align: middle;
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h1>{{ map.name }}</h1>
+            <p class="text-muted">{{ map.description|default:"No description" }}</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'maps:list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Maps
+            </a>
+            {% if can_edit %}
+                <a href="{% url 'maps:edit' map.pk %}" class="btn btn-primary">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Map Info Panel -->
+    <div class="map-info-panel">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Type:</strong> {{ map.get_map_type_display }}
+            </div>
+            <div class="col-md-3">
+                <strong>Dimensions:</strong> {{ map.width }} x {{ map.height }} ({{ map.total_tiles }} tiles)
+            </div>
+            <div class="col-md-3">
+                <strong>Owner:</strong> {{ map.owner.username }}
+            </div>
+            <div class="col-md-3">
+                <strong>Last Updated:</strong> {{ map.updated_at|date:"M d, Y" }}
+            </div>
+        </div>
+        {% if map.is_generated %}
+            <div class="row mt-2">
+                <div class="col">
+                    <span class="badge bg-success">Procedurally Generated</span>
+                    {% if map.generation_seed %}
+                        <span class="badge bg-info text-dark">Seed: {{ map.generation_seed }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <!-- Map Builder Tools (Left Sidebar) -->
+        {% if can_edit %}
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Builder Tools</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Terrain Brush</h6>
+                    <div class="terrain-selector mb-3" id="terrainSelector">
+                        <div class="terrain-option active" data-terrain="floor" data-color="#E8E8E8">
+                            <span class="legend-color" style="background-color: #E8E8E8;"></span>
+                            Floor
+                        </div>
+                        <div class="terrain-option" data-terrain="wall" data-color="#696969">
+                            <span class="legend-color" style="background-color: #696969;"></span>
+                            Wall
+                        </div>
+                        <div class="terrain-option" data-terrain="door" data-color="#8B4513">
+                            <span class="legend-color" style="background-color: #8B4513;"></span>
+                            Door
+                        </div>
+                        <div class="terrain-option" data-terrain="street" data-color="#555555">
+                            <span class="legend-color" style="background-color: #555555;"></span>
+                            Street
+                        </div>
+                        <div class="terrain-option" data-terrain="grass" data-color="#7CFC00">
+                            <span class="legend-color" style="background-color: #7CFC00;"></span>
+                            Grass
+                        </div>
+                        <div class="terrain-option" data-terrain="water" data-color="#4169E1">
+                            <span class="legend-color" style="background-color: #4169E1;"></span>
+                            Water
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <strong>Tip:</strong> Click on tiles to change their terrain type.
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Map Display -->
+        <div class="{% if can_edit %}col-md-9{% else %}col-md-12{% endif %}">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Map View</h5>
+                    <div>
+                        <span class="badge bg-secondary">Zoom: 100%</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="map-container">
+                        <div class="map-grid" style="grid-template-columns: repeat({{ map.width }}, {{ map.tile_size }}px);">
+                            {% for tile in tiles %}
+                                <div class="map-tile"
+                                     data-x="{{ tile.x }}"
+                                     data-y="{{ tile.y }}"
+                                     data-terrain="{{ tile.terrain_type }}"
+                                     style="background-color: {{ tile.color }};"
+                                     title="{{ tile.terrain_type|title }} ({{ tile.x }}, {{ tile.y }})">
+                                    <!-- Check if there's an object at this position -->
+                                    {% for obj in objects %}
+                                        {% if obj.x == tile.x and obj.y == tile.y %}
+                                            <div class="map-object" style="color: {{ obj.color }};" title="{{ obj.name }}">
+                                                {{ obj.icon|default:"●" }}
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Legend -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Legend</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Terrain Types</h6>
+                            {% for tile in tiles|slice:":100" %}
+                                <span class="legend-item">
+                                    <span class="legend-color" style="background-color: {{ tile.color }};"></span>
+                                    {{ tile.terrain_type|title }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                        {% if objects %}
+                        <div class="col-md-6">
+                            <h6>Objects ({{ objects.count }})</h6>
+                            {% for obj in objects|slice:":10" %}
+                                <div class="small">
+                                    <span style="color: {{ obj.color }};">{{ obj.icon|default:"●" }}</span>
+                                    {{ obj.name }} ({{ obj.x }}, {{ obj.y }})
+                                </div>
+                            {% endfor %}
+                            {% if objects.count > 10 %}
+                                <div class="small text-muted">...and {{ objects.count|add:"-10" }} more</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if can_edit %}
+<script>
+    // Simple terrain painting tool
+    let selectedTerrain = 'floor';
+    let selectedColor = '#E8E8E8';
+
+    // Terrain selector
+    document.querySelectorAll('.terrain-option').forEach(option => {
+        option.addEventListener('click', function() {
+            document.querySelectorAll('.terrain-option').forEach(o => o.classList.remove('active'));
+            this.classList.add('active');
+            selectedTerrain = this.dataset.terrain;
+            selectedColor = this.dataset.color;
+        });
+    });
+
+    // Tile clicking (for future AJAX implementation)
+    document.querySelectorAll('.map-tile').forEach(tile => {
+        tile.addEventListener('click', function() {
+            const x = this.dataset.x;
+            const y = this.dataset.y;
+
+            // Update tile visually
+            this.style.backgroundColor = selectedColor;
+            this.dataset.terrain = selectedTerrain;
+            this.title = selectedTerrain.charAt(0).toUpperCase() + selectedTerrain.slice(1) + ` (${x}, ${y})`;
+
+            // TODO: Send AJAX request to update tile in database
+            console.log(`Update tile (${x}, ${y}) to ${selectedTerrain}`);
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

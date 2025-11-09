@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Maps - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Campaign Maps</h1>
+        <div>
+            <a href="{% url 'maps:create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Map
+            </a>
+            <a href="{% url 'maps:generate' %}" class="btn btn-success">
+                <i class="bi bi-magic"></i> Generate Map
+            </a>
+        </div>
+    </div>
+
+    <!-- User's Own Maps -->
+    <div class="mb-5">
+        <h2 class="h3 mb-3">My Maps</h2>
+        {% if user_maps %}
+            <div class="row">
+                {% for map in user_maps %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ map.name }}</h5>
+                                <p class="card-text text-muted small">
+                                    {{ map.description|truncatewords:20|default:"No description" }}
+                                </p>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">{{ map.get_map_type_display }}</span>
+                                    <span class="badge bg-info text-dark">{{ map.width }}x{{ map.height }}</span>
+                                    {% if map.is_generated %}
+                                        <span class="badge bg-success">Generated</span>
+                                    {% endif %}
+                                    {% if map.is_public %}
+                                        <span class="badge bg-warning text-dark">Public</span>
+                                    {% endif %}
+                                </div>
+                                <p class="card-text small text-muted">
+                                    <i class="bi bi-clock"></i> Updated {{ map.updated_at|timesince }} ago
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{% url 'maps:detail' map.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{% url 'maps:edit' map.pk %}" class="btn btn-sm btn-secondary">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <a href="{% url 'maps:delete' map.pk %}" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> You haven't created any maps yet.
+                <a href="{% url 'maps:create' %}" class="alert-link">Create your first map</a> or
+                <a href="{% url 'maps:generate' %}" class="alert-link">generate one</a>.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Shared Maps -->
+    {% if shared_maps %}
+        <div class="mb-5">
+            <h2 class="h3 mb-3">Shared With Me</h2>
+            <div class="row">
+                {% for map in shared_maps %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ map.name }}</h5>
+                                <p class="card-text text-muted small">
+                                    {{ map.description|truncatewords:20|default:"No description" }}
+                                </p>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">{{ map.get_map_type_display }}</span>
+                                    <span class="badge bg-info text-dark">{{ map.width }}x{{ map.height }}</span>
+                                </div>
+                                <p class="card-text small text-muted">
+                                    <i class="bi bi-person"></i> by {{ map.owner.username }}
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{% url 'maps:detail' map.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Public Maps -->
+    {% if public_maps %}
+        <div class="mb-5">
+            <h2 class="h3 mb-3">Public Maps</h2>
+            <div class="row">
+                {% for map in public_maps %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ map.name }}</h5>
+                                <p class="card-text text-muted small">
+                                    {{ map.description|truncatewords:20|default:"No description" }}
+                                </p>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">{{ map.get_map_type_display }}</span>
+                                    <span class="badge bg-info text-dark">{{ map.width }}x{{ map.height }}</span>
+                                </div>
+                                <p class="card-text small text-muted">
+                                    <i class="bi bi-person"></i> by {{ map.owner.username }}
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{% url 'maps:detail' map.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

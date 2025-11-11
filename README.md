@@ -35,7 +35,7 @@ This application aims to provide a comprehensive platform for Shadowrun campaign
   - Seed-based generation for reproducible maps
   - Generation presets for quick map creation
 - **Map Sharing**: Share maps with specific players or make them public
-- **Campaign Management**: Organize and manage multiple campaigns (coming soon)
+- **Campaign Management**: Organize and manage multiple campaigns with comprehensive session tracking
 
 ## Technology Stack
 
@@ -177,11 +177,15 @@ The map builder provides comprehensive tools for creating and managing campaign 
 ### Key Features
 - **Visual Grid Editor**: Interactive map display with color-coded tiles
 - **Terrain Painting**: Click-to-paint interface for changing tile types
-- **Advanced Procedural Generation**: Choose from 5 different algorithms
+- **Advanced Procedural Generation**: Choose from 5 different algorithms with customizable parameters
   - **BSP**: Room-and-corridor layouts perfect for dungeons and buildings
+    - Customizable: min/max room size, corridor width
   - **Cellular Automata**: Organic cave systems with natural-looking structures
+    - Customizable: smoothing iterations, wall density
   - **Random Walk**: Winding tunnels and passages
+    - Customizable: number of steps, tunnel width probability
   - **Maze**: Complex recursive mazes for puzzle-oriented maps
+    - Customizable: path width
   - **Random**: Simple distribution for outdoor environments
 - **Map Sharing**: Control visibility with public/private settings and user-specific sharing
 - **Object Placement**: Add and manage NPCs, enemies, items, and markers
@@ -221,13 +225,74 @@ Simple algorithm that randomly places different terrain types across the map. Go
 - Quick test maps
 - Areas with varied terrain
 
-### Access URLs
+### Algorithm Customization Parameters
+
+Each generation algorithm now supports customizable parameters to fine-tune the map output:
+
+#### BSP Parameters
+- **Min Room Size** (3-15): Minimum dimension for generated rooms. Smaller values create tighter, more cramped layouts.
+- **Max Room Size** (5-30): Maximum dimension for generated rooms. Larger values create more spacious areas.
+- **Corridor Width** (1-3): Width of connecting corridors. Wider corridors make navigation easier.
+
+#### Cellular Automata Parameters
+- **Iterations** (1-10): Number of smoothing passes. More iterations create smoother, more refined cave walls.
+- **Wall Probability** (0.1-0.9): Initial density of walls. Lower values (0.3-0.4) create open caves, higher values (0.5-0.6) create dense cave systems.
+
+#### Random Walk Parameters
+- **Steps**: Number of walking steps. More steps create longer, more complex tunnel systems. Leave empty for automatic calculation.
+- **Tunnel Width Probability** (0.0-1.0): Chance to widen tunnels. Higher values create more spacious passages.
+
+#### Maze Parameters
+- **Path Width** (1-3): Width of maze corridors. Wider paths make the maze easier to navigate.
+
+### Map Access URLs
 - `/maps/` - List all accessible maps
 - `/maps/create/` - Create a new blank map
 - `/maps/generate/` - Generate a map procedurally (choose algorithm here)
 - `/maps/<id>/` - View and edit map in builder interface
 - `/maps/<id>/edit/` - Edit map settings
 - `/maps/<id>/delete/` - Delete a map
+
+## Campaign Session Management
+
+The campaign system provides comprehensive tools for organizing and running Shadowrun campaigns:
+
+### Campaign Features
+- **Campaign Creation**: Create and manage multiple campaigns with customizable settings
+- **Player Management**: Add players to campaigns and track their characters
+- **Campaign Status Tracking**: Monitor campaign progress (Planning, Active, On Hold, Completed, Archived)
+- **Flexible Settings**: Configure starting karma and resources for new characters
+- **Public & Private Notes**: Maintain GM-only notes and player-visible campaign information
+- **Character & Map Integration**: Link characters and maps to campaigns for easy access
+- **Campaign Dashboard**: View all campaign details, sessions, characters, and maps in one place
+
+### Session Features
+- **Session Tracking**: Create and manage individual game sessions within campaigns
+- **Scheduling**: Track scheduled and actual session dates and times
+- **Session Status**: Monitor session state (Planned, In Progress, Completed, Cancelled)
+- **Comprehensive Notes**: Maintain GM preparation notes, public session recaps, and player summaries
+- **Rewards Management**: Track karma and nuyen awarded to characters
+- **Combat Tracking**: Record encounters faced and enemies defeated
+- **Event Logging**: Document objectives completed, important NPCs encountered, and loot acquired
+- **Resource Linking**: Associate maps and characters with specific sessions
+- **Session Objectives**: Create and track individual objectives for each session
+
+### Campaign Statistics
+- Automatic tracking of total and completed sessions
+- Character participation tracking across sessions
+- Map usage statistics
+- Campaign timeline and history
+
+### Campaign Access URLs
+- `/campaigns/` - List all campaigns (GM and player)
+- `/campaigns/create/` - Create a new campaign
+- `/campaigns/<id>/` - View campaign dashboard with all sessions
+- `/campaigns/<id>/edit/` - Edit campaign settings
+- `/campaigns/<id>/delete/` - Delete a campaign
+- `/campaigns/<id>/sessions/create/` - Create a new session
+- `/campaigns/<id>/sessions/<session_id>/` - View session details
+- `/campaigns/<id>/sessions/<session_id>/edit/` - Edit session
+- `/campaigns/<id>/sessions/<session_id>/delete/` - Delete session
 
 ## Roadmap
 
@@ -258,13 +323,29 @@ Simple algorithm that randomly places different terrain types across the map. Go
   - [x] Random Walk for winding tunnels
   - [x] Maze generation using recursive backtracking
   - [x] Random distribution algorithm
+- [x] Algorithm customization parameters (room sizes, corridor widths, iteration counts)
+- [x] Map generation preview before saving (AJAX-based preview with accept/regenerate options)
+- [x] AJAX-based tile editing with paint brush mode (click-and-drag painting, auto-save with visual feedback)
+- [x] Campaign Management System:
+  - [x] Campaign creation and management
+  - [x] Campaign status tracking (Planning, Active, On Hold, Completed, Archived)
+  - [x] Player and character assignment to campaigns
+  - [x] Campaign settings (starting karma/resources)
+  - [x] Public and private campaign notes
+  - [x] Campaign dashboard with full overview
+- [x] Session Management System:
+  - [x] Session creation and tracking within campaigns
+  - [x] Session scheduling (planned and actual dates)
+  - [x] Session status tracking (Planned, In Progress, Completed, Cancelled)
+  - [x] Session notes (GM private, public recap, player summary)
+  - [x] Rewards tracking (karma, nuyen)
+  - [x] Combat statistics (encounters, enemies defeated)
+  - [x] Event logging (objectives, NPCs, loot)
+  - [x] Character and map linking to sessions
+  - [x] Session objectives system
 
 ### Planned
-- [ ] Algorithm customization parameters (room sizes, corridor widths, iteration counts)
-- [ ] Map generation preview before saving
 - [ ] Real-time collaborative map editing
-- [ ] AJAX-based tile editing (currently client-side only)
-- [ ] Campaign session management
 - [ ] Dice rolling integration
 - [ ] Combat tracker
 - [ ] NPC management with character links

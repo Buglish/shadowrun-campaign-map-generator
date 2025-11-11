@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Session - {{ session.title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:list' %}">Campaigns</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:detail' campaign.pk %}">{{ campaign.name }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:session_detail' campaign.pk session.pk %}">Session {{ session.session_number }}</a></li>
+        <li class="breadcrumb-item active">Delete</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body">
+                <h3 class="card-title text-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Delete Session
+                </h3>
+                <p class="card-text">
+                    Are you sure you want to delete <strong>Session {{ session.session_number }}: {{ session.title }}</strong> from the campaign "{{ campaign.name }}"?
+                </p>
+                <div class="alert alert-danger">
+                    <strong>Warning:</strong> This action cannot be undone.
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Session
+                        </button>
+                        <a href="{% url 'campaigns:session_detail' campaign.pk session.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

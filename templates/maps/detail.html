@@ -174,7 +174,7 @@
                     </div>
 
                     <div class="alert alert-info small">
-                        <strong>Tip:</strong> Click on tiles to change their terrain type.
+                        <strong>Tip:</strong> Click on tiles to paint, or click and drag to paint multiple tiles at once. Changes are saved automatically.
                     </div>
                 </div>
             </div>
@@ -254,9 +254,51 @@
 
 {% if can_edit %}
 <script>
-    // Simple terrain painting tool
+    // Terrain painting tool with AJAX
     let selectedTerrain = 'floor';
     let selectedColor = '#E8E8E8';
+    let isUpdating = false;
+    let updateQueue = [];
+
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // Status indicator
+    const statusIndicator = document.createElement('div');
+    statusIndicator.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 10px 20px; background-color: #28a745; color: white; border-radius: 5px; display: none; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);';
+    statusIndicator.innerHTML = '<i class="bi bi-check-circle"></i> Saved';
+    document.body.appendChild(statusIndicator);
+
+    function showStatus(message, type = 'success') {
+        const colors = {
+            'success': '#28a745',
+            'error': '#dc3545',
+            'saving': '#ffc107'
+        };
+        statusIndicator.style.backgroundColor = colors[type];
+        statusIndicator.innerHTML = message;
+        statusIndicator.style.display = 'block';
+
+        if (type !== 'saving') {
+            setTimeout(() => {
+                statusIndicator.style.display = 'none';
+            }, 2000);
+        }
+    }
 
     // Terrain selector
     document.querySelectorAll('.terrain-option').forEach(option => {
@@ -268,20 +310,143 @@
         });
     });
 
-    // Tile clicking (for future AJAX implementation)
-    document.querySelectorAll('.map-tile').forEach(tile => {
-        tile.addEventListener('click', function() {
-            const x = this.dataset.x;
-            const y = this.dataset.y;
+    // Update tile via AJAX
+    function updateTile(tileElement, x, y) {
+        const formData = new FormData();
+        formData.append('x', x);
+        formData.append('y', y);
+        formData.append('terrain_type', selectedTerrain);
+        formData.append('color', selectedColor);
 
-            // Update tile visually
-            this.style.backgroundColor = selectedColor;
-            this.dataset.terrain = selectedTerrain;
-            this.title = selectedTerrain.charAt(0).toUpperCase() + selectedTerrain.slice(1) + ` (${x}, ${y})`;
+        showStatus('<i class="bi bi-arrow-repeat"></i> Saving...', 'saving');
 
-            // TODO: Send AJAX request to update tile in database
-            console.log(`Update tile (${x}, ${y}) to ${selectedTerrain}`);
+        fetch('{% url "maps:tile_update" map.pk %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showStatus('<i class="bi bi-check-circle"></i> Saved', 'success');
+                // Tile is already updated visually, just confirm the data
+                console.log(`Tile (${x}, ${y}) updated successfully`);
+            } else {
+                showStatus('<i class="bi bi-exclamation-circle"></i> Error: ' + data.error, 'error');
+                console.error('Error updating tile:', data.error);
+            }
+        })
+        .catch(error => {
+            showStatus('<i class="bi bi-exclamation-circle"></i> Failed to save', 'error');
+            console.error('Error:', error);
         });
+    }
+
+    // Paint brush mode - click and drag to paint
+    let isPainting = false;
+    let pendingUpdates = new Map(); // Track tiles that need to be saved
+    let saveTimeout = null;
+
+    function paintTile(tileElement) {
+        const x = tileElement.dataset.x;
+        const y = tileElement.dataset.y;
+        const tileKey = `${x},${y}`;
+
+        // Skip if tile already has the same terrain
+        if (tileElement.dataset.terrain === selectedTerrain) {
+            return;
+        }
+
+        // Update tile visually immediately for responsiveness
+        tileElement.style.backgroundColor = selectedColor;
+        tileElement.dataset.terrain = selectedTerrain;
+        tileElement.title = selectedTerrain.charAt(0).toUpperCase() + selectedTerrain.slice(1) + ` (${x}, ${y})`;
+
+        // Add to pending updates
+        pendingUpdates.set(tileKey, { element: tileElement, x, y });
+
+        // Debounce the save operation
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            savePendingUpdates();
+        }, 500); // Wait 500ms after last paint action
+    }
+
+    function savePendingUpdates() {
+        if (pendingUpdates.size === 0) return;
+
+        showStatus(`<i class="bi bi-arrow-repeat"></i> Saving ${pendingUpdates.size} tile(s)...`, 'saving');
+
+        const updates = Array.from(pendingUpdates.values());
+        pendingUpdates.clear();
+
+        // Send all updates
+        Promise.all(updates.map(update => {
+            const formData = new FormData();
+            formData.append('x', update.x);
+            formData.append('y', update.y);
+            formData.append('terrain_type', selectedTerrain);
+            formData.append('color', selectedColor);
+
+            return fetch('{% url "maps:tile_update" map.pk %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(response => response.json());
+        }))
+        .then(results => {
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.length - successCount;
+
+            if (failCount === 0) {
+                showStatus(`<i class="bi bi-check-circle"></i> Saved ${successCount} tile(s)`, 'success');
+            } else {
+                showStatus(`<i class="bi bi-exclamation-circle"></i> Saved ${successCount}, ${failCount} failed`, 'error');
+            }
+        })
+        .catch(error => {
+            showStatus('<i class="bi bi-exclamation-circle"></i> Failed to save', 'error');
+            console.error('Error:', error);
+        });
+    }
+
+    // Tile interaction events
+    document.querySelectorAll('.map-tile').forEach(tile => {
+        // Click to paint single tile
+        tile.addEventListener('click', function() {
+            paintTile(this);
+        });
+
+        // Mouse down starts painting mode
+        tile.addEventListener('mousedown', function() {
+            isPainting = true;
+            paintTile(this);
+        });
+
+        // Mouse enter while painting continues painting
+        tile.addEventListener('mouseenter', function() {
+            if (isPainting) {
+                paintTile(this);
+            }
+        });
+    });
+
+    // Mouse up anywhere stops painting mode
+    document.addEventListener('mouseup', function() {
+        if (isPainting) {
+            isPainting = false;
+            // Save any pending updates immediately when painting stops
+            if (pendingUpdates.size > 0) {
+                clearTimeout(saveTimeout);
+                savePendingUpdates();
+            }
+        }
     });
 </script>
 {% endif %}

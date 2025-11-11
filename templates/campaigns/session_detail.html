@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}Session {{ session.session_number }}: {{ session.title }} - {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:list' %}">Campaigns</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:detail' campaign.pk %}">{{ campaign.name }}</a></li>
+        <li class="breadcrumb-item active">Session {{ session.session_number }}</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-calendar-event"></i> Session {{ session.session_number }}: {{ session.title }}</h1>
+        <span class="badge
+            {% if session.status == 'completed' %}bg-success
+            {% elif session.status == 'in_progress' %}bg-warning
+            {% elif session.status == 'planned' %}bg-info
+            {% else %}bg-secondary{% endif %}">
+            {{ session.get_status_display }}
+        </span>
+    </div>
+    {% if is_gm %}
+        <div class="col text-end">
+            <a href="{% url 'campaigns:session_edit' campaign.pk session.pk %}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a href="{% url 'campaigns:session_delete' campaign.pk session.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Delete
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Session Info -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Session Information</h5>
+        {% if session.description %}
+            <p class="card-text">{{ session.description }}</p>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-6">
+                {% if session.scheduled_date %}
+                    <p class="mb-1"><strong>Scheduled:</strong> {{ session.scheduled_date|date:"M d, Y g:i A" }}</p>
+                {% endif %}
+                {% if session.actual_date %}
+                    <p class="mb-1"><strong>Played:</strong> {{ session.actual_date|date:"M d, Y g:i A" }}</p>
+                {% endif %}
+                {% if session.duration_minutes %}
+                    <p class="mb-1"><strong>Duration:</strong> {{ session.duration_hours }} hours</p>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Characters Present:</strong> {{ session.characters_present.count }}</p>
+                <p class="mb-1"><strong>Maps Used:</strong> {{ session.maps_used.count }}</p>
+                {% if session.encounters_faced > 0 %}
+                    <p class="mb-1"><strong>Encounters:</strong> {{ session.encounters_faced }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GM Notes (only visible to GM) -->
+{% if is_gm and session.gm_notes %}
+    <div class="card shadow-sm mb-4 border-warning">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-lock"></i> GM Notes (Private)</h5>
+            <p class="card-text" style="white-space: pre-wrap;">{{ session.gm_notes }}</p>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Session Recap -->
+{% if session.session_notes %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-journal-text"></i> Session Recap</h5>
+            <p class="card-text" style="white-space: pre-wrap;">{{ session.session_notes }}</p>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Player Summary -->
+{% if session.player_summary %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-people"></i> Player Summary</h5>
+            <p class="card-text" style="white-space: pre-wrap;">{{ session.player_summary }}</p>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Rewards & Combat -->
+{% if session.karma_awarded > 0 or session.nuyen_awarded > 0 or session.encounters_faced > 0 %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-trophy"></i> Rewards & Combat</h5>
+            <div class="row">
+                {% if session.karma_awarded > 0 %}
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h3 class="mb-0">{{ session.karma_awarded }}</h3>
+                            <small class="text-muted">Karma</small>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if session.nuyen_awarded > 0 %}
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h3 class="mb-0">{{ session.nuyen_awarded|floatformat:0 }}¥</h3>
+                            <small class="text-muted">Nuyen</small>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if session.encounters_faced > 0 %}
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h3 class="mb-0">{{ session.encounters_faced }}</h3>
+                            <small class="text-muted">Encounters</small>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if session.enemies_defeated > 0 %}
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <h3 class="mb-0">{{ session.enemies_defeated }}</h3>
+                            <small class="text-muted">Enemies Defeated</small>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Important Events -->
+<div class="row">
+    {% if session.objectives_completed %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-check2-square"></i> Objectives Completed</h5>
+                    <ul class="list-unstyled mb-0">
+                        {% for objective in session.objectives_completed.splitlines %}
+                            {% if objective %}
+                                <li><i class="bi bi-check text-success"></i> {{ objective }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if session.important_npcs %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-person"></i> Important NPCs</h5>
+                    <ul class="list-unstyled mb-0">
+                        {% for npc in session.important_npcs.splitlines %}
+                            {% if npc %}
+                                <li><i class="bi bi-person-fill text-primary"></i> {{ npc }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if session.loot_acquired %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-gem"></i> Loot Acquired</h5>
+                    <ul class="list-unstyled mb-0">
+                        {% for loot in session.loot_acquired.splitlines %}
+                            {% if loot %}
+                                <li><i class="bi bi-gem text-warning"></i> {{ loot }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Characters Present -->
+{% if session.characters_present.all %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-people"></i> Characters Present</h5>
+        </div>
+        <div class="card-body">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                {% for character in session.characters_present.all %}
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ character.name }}</h6>
+                                <p class="card-text small mb-0">
+                                    {{ character.get_race_display }} {{ character.get_archetype_display }}<br>
+                                    Player: {{ character.user.username }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Maps Used -->
+{% if session.maps_used.all %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-map"></i> Maps Used</h5>
+        </div>
+        <div class="card-body">
+            <div class="row row-cols-1 row-cols-md-3 g-3">
+                {% for map in session.maps_used.all %}
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <a href="{% url 'maps:detail' map.pk %}" class="text-decoration-none">
+                                        {{ map.name }}
+                                    </a>
+                                </h6>
+                                <p class="card-text small mb-0">
+                                    {{ map.width }}x{{ map.height }} - {{ map.get_map_type_display }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

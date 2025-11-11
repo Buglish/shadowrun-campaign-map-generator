@@ -64,21 +64,23 @@ class BSPNode:
 
         return True
 
-    def create_rooms(self, min_room_size: int = 5) -> List[Room]:
+    def create_rooms(self, min_room_size: int = 5, max_room_size: int = 10) -> List[Room]:
         """Create rooms in leaf nodes"""
         if self.left or self.right:
             # This is not a leaf, create rooms in children
             rooms = []
             if self.left:
-                rooms.extend(self.left.create_rooms(min_room_size))
+                rooms.extend(self.left.create_rooms(min_room_size, max_room_size))
             if self.right:
-                rooms.extend(self.right.create_rooms(min_room_size))
+                rooms.extend(self.right.create_rooms(min_room_size, max_room_size))
             return rooms
         else:
             # This is a leaf, create a room
             # Ensure we have enough space for a room
-            max_width = max(min_room_size, self.width - 2)
-            max_height = max(min_room_size, self.height - 2)
+            max_width = min(max_room_size, self.width - 2)
+            max_width = max(min_room_size, max_width)
+            max_height = min(max_room_size, self.height - 2)
+            max_height = max(min_room_size, max_height)
 
             room_width = random.randint(min_room_size, max_width) if max_width > min_room_size else min_room_size
             room_height = random.randint(min_room_size, max_height) if max_height > min_room_size else min_room_size
@@ -97,13 +99,29 @@ class BSPNode:
             return [self.room]
 
 
-def generate_bsp_map(width: int, height: int, seed: str = None) -> List[Tuple[int, int, str]]:
+def generate_bsp_map(width: int, height: int, seed: str = None, params: dict = None) -> List[Tuple[int, int, str]]:
     """
     Generate a map using Binary Space Partitioning algorithm.
     Returns a list of (x, y, terrain_type) tuples.
+
+    Parameters:
+        width: Map width
+        height: Map height
+        seed: Random seed for reproducibility
+        params: Dictionary with optional parameters:
+            - min_room_size: Minimum room dimension (default: 4)
+            - max_room_size: Maximum room dimension (default: 10)
+            - corridor_width: Width of corridors (default: 1)
     """
     if seed:
         random.seed(hash(seed))
+
+    # Parse parameters
+    if params is None:
+        params = {}
+    min_room_size = params.get('min_room_size', 4)
+    max_room_size = params.get('max_room_size', 10)
+    corridor_width = params.get('corridor_width', 1)
 
     # Initialize all tiles as walls
     tiles = {}
@@ -118,14 +136,14 @@ def generate_bsp_map(width: int, height: int, seed: str = None) -> List[Tuple[in
     nodes = [root]
     while nodes:
         node = nodes.pop(0)
-        if node.split(min_room_size=5):
+        if node.split(min_room_size=min_room_size):
             if node.left:
                 nodes.append(node.left)
             if node.right:
                 nodes.append(node.right)
 
     # Create rooms
-    rooms = root.create_rooms(min_room_size=5)
+    rooms = root.create_rooms(min_room_size=min_room_size, max_room_size=max_room_size)
 
     # Fill rooms with floor tiles
     for room in rooms:
@@ -139,23 +157,27 @@ def generate_bsp_map(width: int, height: int, seed: str = None) -> List[Tuple[in
         room1 = rooms[i]
         room2 = rooms[i + 1]
 
-        # Create L-shaped corridor
+        # Create L-shaped corridor with configurable width
         if random.choice([True, False]):
             # Horizontal then vertical
             for x in range(min(room1.center_x, room2.center_x), max(room1.center_x, room2.center_x) + 1):
-                if 0 <= x < width and 0 <= room1.center_y < height:
-                    tiles[(x, room1.center_y)] = 'floor'
+                for w in range(corridor_width):
+                    if 0 <= x < width and 0 <= room1.center_y + w < height:
+                        tiles[(x, room1.center_y + w)] = 'floor'
             for y in range(min(room1.center_y, room2.center_y), max(room1.center_y, room2.center_y) + 1):
-                if 0 <= room2.center_x < width and 0 <= y < height:
-                    tiles[(room2.center_x, y)] = 'floor'
+                for w in range(corridor_width):
+                    if 0 <= room2.center_x + w < width and 0 <= y < height:
+                        tiles[(room2.center_x + w, y)] = 'floor'
         else:
             # Vertical then horizontal
             for y in range(min(room1.center_y, room2.center_y), max(room1.center_y, room2.center_y) + 1):
-                if 0 <= room1.center_x < width and 0 <= y < height:
-                    tiles[(room1.center_x, y)] = 'floor'
+                for w in range(corridor_width):
+                    if 0 <= room1.center_x + w < width and 0 <= y < height:
+                        tiles[(room1.center_x + w, y)] = 'floor'
             for x in range(min(room1.center_x, room2.center_x), max(room1.center_x, room2.center_x) + 1):
-                if 0 <= x < width and 0 <= room2.center_y < height:
-                    tiles[(x, room2.center_y)] = 'floor'
+                for w in range(corridor_width):
+                    if 0 <= x < width and 0 <= room2.center_y + w < height:
+                        tiles[(x, room2.center_y + w)] = 'floor'
 
     # Add doors at room entrances (randomly)
     for room in rooms:
@@ -174,14 +196,27 @@ def generate_bsp_map(width: int, height: int, seed: str = None) -> List[Tuple[in
     return result
 
 
-def generate_cellular_automata_map(width: int, height: int, seed: str = None,
-                                   iterations: int = 5, wall_probability: float = 0.45) -> List[Tuple[int, int, str]]:
+def generate_cellular_automata_map(width: int, height: int, seed: str = None, params: dict = None) -> List[Tuple[int, int, str]]:
     """
     Generate a cave-like map using Cellular Automata algorithm.
     Returns a list of (x, y, terrain_type) tuples.
+
+    Parameters:
+        width: Map width
+        height: Map height
+        seed: Random seed for reproducibility
+        params: Dictionary with optional parameters:
+            - iterations: Number of smoothing iterations (default: 5)
+            - wall_probability: Initial wall density 0-1 (default: 0.45)
     """
     if seed:
         random.seed(hash(seed))
+
+    # Parse parameters
+    if params is None:
+        params = {}
+    iterations = params.get('iterations', 5)
+    wall_probability = params.get('wall_probability', 0.45)
 
     # Initialize random map
     tiles = {}
@@ -243,17 +278,27 @@ def count_walls_around(tiles: Dict, x: int, y: int, width: int, height: int, rad
     return count
 
 
-def generate_random_walk_map(width: int, height: int, seed: str = None,
-                             steps: int = None) -> List[Tuple[int, int, str]]:
+def generate_random_walk_map(width: int, height: int, seed: str = None, params: dict = None) -> List[Tuple[int, int, str]]:
     """
     Generate a map using random walk algorithm (creates winding paths).
     Returns a list of (x, y, terrain_type) tuples.
+
+    Parameters:
+        width: Map width
+        height: Map height
+        seed: Random seed for reproducibility
+        params: Dictionary with optional parameters:
+            - steps: Number of walk steps (default: width * height // 2)
+            - tunnel_width_probability: Chance to make wider tunnels 0-1 (default: 0.3)
     """
     if seed:
         random.seed(hash(seed))
 
-    if steps is None:
-        steps = (width * height) // 2
+    # Parse parameters
+    if params is None:
+        params = {}
+    steps = params.get('steps', (width * height) // 2)
+    tunnel_width_probability = params.get('tunnel_width_probability', 0.3)
 
     # Initialize all tiles as walls
     tiles = {}
@@ -280,7 +325,7 @@ def generate_random_walk_map(width: int, height: int, seed: str = None,
             tiles[(current_x, current_y)] = 'tunnel'
 
             # Sometimes create wider paths
-            if random.random() < 0.3:
+            if random.random() < tunnel_width_probability:
                 for dx2, dy2 in directions:
                     adj_x = current_x + dx2
                     adj_y = current_y + dy2
@@ -295,13 +340,25 @@ def generate_random_walk_map(width: int, height: int, seed: str = None,
     return result
 
 
-def generate_maze_map(width: int, height: int, seed: str = None) -> List[Tuple[int, int, str]]:
+def generate_maze_map(width: int, height: int, seed: str = None, params: dict = None) -> List[Tuple[int, int, str]]:
     """
     Generate a maze using recursive backtracking.
     Returns a list of (x, y, terrain_type) tuples.
+
+    Parameters:
+        width: Map width
+        height: Map height
+        seed: Random seed for reproducibility
+        params: Dictionary with optional parameters:
+            - path_width: Width of maze paths (default: 1)
     """
     if seed:
         random.seed(hash(seed))
+
+    # Parse parameters
+    if params is None:
+        params = {}
+    path_width = params.get('path_width', 1)
 
     # Initialize all tiles as walls
     tiles = {}
@@ -332,9 +389,22 @@ def generate_maze_map(width: int, height: int, seed: str = None) -> List[Tuple[i
             # Choose random unvisited neighbor
             nx, ny, dx, dy = random.choice(neighbors)
 
-            # Carve path to neighbor
-            tiles[(current_x + dx // 2, current_y + dy // 2)] = 'floor'
-            tiles[(nx, ny)] = 'floor'
+            # Carve path to neighbor with configurable width
+            for w in range(path_width):
+                # Carve current cell and path
+                if 0 <= current_x + w < width and 0 <= current_y + w < height:
+                    tiles[(current_x + w, current_y)] = 'floor'
+                    tiles[(current_x, current_y + w)] = 'floor'
+                # Carve connecting cell
+                if 0 <= current_x + dx // 2 + w < width and 0 <= current_y + dy // 2 < height:
+                    tiles[(current_x + dx // 2 + w, current_y + dy // 2)] = 'floor'
+                if 0 <= current_x + dx // 2 < width and 0 <= current_y + dy // 2 + w < height:
+                    tiles[(current_x + dx // 2, current_y + dy // 2 + w)] = 'floor'
+                # Carve neighbor cell
+                if 0 <= nx + w < width and 0 <= ny < height:
+                    tiles[(nx + w, ny)] = 'floor'
+                if 0 <= nx < width and 0 <= ny + w < height:
+                    tiles[(nx, ny + w)] = 'floor'
 
             visited.add((nx, ny))
             stack.append((nx, ny))

@@ -103,6 +103,69 @@ class MapGenerationForm(forms.ModelForm):
         help_text='Optional seed for reproducible generation (leave empty for random)'
     )
 
+    # BSP Parameters
+    min_room_size = forms.IntegerField(
+        required=False,
+        initial=4,
+        min_value=3,
+        max_value=15,
+        help_text='Minimum room size for BSP algorithm (3-15)'
+    )
+    max_room_size = forms.IntegerField(
+        required=False,
+        initial=10,
+        min_value=5,
+        max_value=30,
+        help_text='Maximum room size for BSP algorithm (5-30)'
+    )
+    corridor_width = forms.IntegerField(
+        required=False,
+        initial=1,
+        min_value=1,
+        max_value=3,
+        help_text='Width of corridors for BSP algorithm (1-3)'
+    )
+
+    # Cellular Automata Parameters
+    iterations = forms.IntegerField(
+        required=False,
+        initial=5,
+        min_value=1,
+        max_value=10,
+        help_text='Number of smoothing iterations (1-10)'
+    )
+    wall_probability = forms.FloatField(
+        required=False,
+        initial=0.45,
+        min_value=0.1,
+        max_value=0.9,
+        help_text='Initial wall density 0.1-0.9 (lower = more open)'
+    )
+
+    # Random Walk Parameters
+    steps = forms.IntegerField(
+        required=False,
+        initial=None,
+        min_value=10,
+        help_text='Number of walk steps (leave empty for auto)'
+    )
+    tunnel_width_probability = forms.FloatField(
+        required=False,
+        initial=0.3,
+        min_value=0.0,
+        max_value=1.0,
+        help_text='Probability of wider tunnels 0.0-1.0'
+    )
+
+    # Maze Parameters
+    path_width = forms.IntegerField(
+        required=False,
+        initial=1,
+        min_value=1,
+        max_value=3,
+        help_text='Width of maze paths (1-3)'
+    )
+
     class Meta:
         model = Map
         fields = ['name', 'width', 'height', 'map_type']
@@ -119,13 +182,45 @@ class MapGenerationForm(forms.ModelForm):
         self.helper.layout = Layout(
             Field('name', css_class='form-control'),
             HTML('<hr><h5>Generation Settings</h5>'),
-            Field('algorithm', css_class='form-control'),
+            Field('algorithm', css_class='form-control', id='id_algorithm'),
             Row(
                 Column('width', css_class='form-group col-md-4'),
                 Column('height', css_class='form-group col-md-4'),
                 Column('map_type', css_class='form-group col-md-4'),
             ),
             Field('seed', css_class='form-control'),
+
+            HTML('<hr><h5>Algorithm Parameters</h5>'),
+            HTML('<div id="bsp-params" style="display:none;">'),
+            HTML('<h6>BSP (Binary Space Partitioning) Parameters</h6>'),
+            Row(
+                Column('min_room_size', css_class='form-group col-md-4'),
+                Column('max_room_size', css_class='form-group col-md-4'),
+                Column('corridor_width', css_class='form-group col-md-4'),
+            ),
+            HTML('</div>'),
+
+            HTML('<div id="cellular-params" style="display:none;">'),
+            HTML('<h6>Cellular Automata Parameters</h6>'),
+            Row(
+                Column('iterations', css_class='form-group col-md-6'),
+                Column('wall_probability', css_class='form-group col-md-6'),
+            ),
+            HTML('</div>'),
+
+            HTML('<div id="randomwalk-params" style="display:none;">'),
+            HTML('<h6>Random Walk Parameters</h6>'),
+            Row(
+                Column('steps', css_class='form-group col-md-6'),
+                Column('tunnel_width_probability', css_class='form-group col-md-6'),
+            ),
+            HTML('</div>'),
+
+            HTML('<div id="maze-params" style="display:none;">'),
+            HTML('<h6>Maze Parameters</h6>'),
+            Field('path_width', css_class='form-control'),
+            HTML('</div>'),
+
             HTML('<hr><h5>Or Use a Preset</h5>'),
             Div(
                 Field('use_preset', css_class='form-check-input'),
@@ -133,7 +228,7 @@ class MapGenerationForm(forms.ModelForm):
                 css_class='preset-section'
             ),
             HTML('<hr>'),
-            Submit('submit', 'Generate Map', css_class='btn btn-success')
+            Submit('submit', 'Preview Map', css_class='btn btn-primary')
         )
 
 

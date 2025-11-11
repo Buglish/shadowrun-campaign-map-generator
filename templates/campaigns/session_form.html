@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Session - {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:list' %}">Campaigns</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'campaigns:detail' campaign.pk %}">{{ campaign.name }}</a></li>
+        <li class="breadcrumb-item active">{{ action }} Session</li>
+    </ol>
+</nav>
+
+<h1><i class="bi bi-calendar-event"></i> {{ action }} Session</h1>
+
+<div class="card shadow-sm mt-4">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Basic Information -->
+            <h5 class="mb-3">Basic Information</h5>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.session_number.id_for_label }}" class="form-label">Session Number *</label>
+                    {{ form.session_number }}
+                    {% if form.session_number.errors %}
+                        <div class="text-danger small">{{ form.session_number.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-9 mb-3">
+                    <label for="{{ form.title.id_for_label }}" class="form-label">Session Title *</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                        <div class="text-danger small">{{ form.title.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <div class="text-danger small">{{ form.description.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Scheduling -->
+            <h5 class="mb-3 mt-4">Scheduling</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+                    {{ form.status }}
+                    {% if form.status.errors %}
+                        <div class="text-danger small">{{ form.status.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.scheduled_date.id_for_label }}" class="form-label">Scheduled Date/Time</label>
+                    {{ form.scheduled_date }}
+                    {% if form.scheduled_date.errors %}
+                        <div class="text-danger small">{{ form.scheduled_date.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.actual_date.id_for_label }}" class="form-label">Actual Date/Time</label>
+                    {{ form.actual_date }}
+                    {% if form.actual_date.errors %}
+                        <div class="text-danger small">{{ form.actual_date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.duration_minutes.id_for_label }}" class="form-label">Duration (minutes)</label>
+                {{ form.duration_minutes }}
+                {% if form.duration_minutes.errors %}
+                    <div class="text-danger small">{{ form.duration_minutes.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Session Content -->
+            <h5 class="mb-3 mt-4">Session Content</h5>
+            <div class="mb-3">
+                <label for="{{ form.characters_present.id_for_label }}" class="form-label">Characters Present</label>
+                {{ form.characters_present }}
+                <small class="form-text text-muted">Hold Ctrl (Cmd on Mac) to select multiple</small>
+                {% if form.characters_present.errors %}
+                    <div class="text-danger small">{{ form.characters_present.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.maps_used.id_for_label }}" class="form-label">Maps Used</label>
+                {{ form.maps_used }}
+                <small class="form-text text-muted">Hold Ctrl (Cmd on Mac) to select multiple</small>
+                {% if form.maps_used.errors %}
+                    <div class="text-danger small">{{ form.maps_used.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Notes -->
+            <h5 class="mb-3 mt-4">Session Notes</h5>
+            <div class="mb-3">
+                <label for="{{ form.gm_notes.id_for_label }}" class="form-label">GM Notes (Private)</label>
+                {{ form.gm_notes }}
+                <small class="form-text text-muted">Preparation notes, only visible to GM</small>
+                {% if form.gm_notes.errors %}
+                    <div class="text-danger small">{{ form.gm_notes.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.session_notes.id_for_label }}" class="form-label">Session Recap (Public)</label>
+                {{ form.session_notes }}
+                <small class="form-text text-muted">Session summary visible to all players</small>
+                {% if form.session_notes.errors %}
+                    <div class="text-danger small">{{ form.session_notes.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.player_summary.id_for_label }}" class="form-label">Player Summary</label>
+                {{ form.player_summary }}
+                <small class="form-text text-muted">Player-written session summary</small>
+                {% if form.player_summary.errors %}
+                    <div class="text-danger small">{{ form.player_summary.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Rewards -->
+            <h5 class="mb-3 mt-4">Rewards & Combat</h5>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.karma_awarded.id_for_label }}" class="form-label">Karma Awarded</label>
+                    {{ form.karma_awarded }}
+                    {% if form.karma_awarded.errors %}
+                        <div class="text-danger small">{{ form.karma_awarded.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.nuyen_awarded.id_for_label }}" class="form-label">Nuyen Awarded</label>
+                    {{ form.nuyen_awarded }}
+                    {% if form.nuyen_awarded.errors %}
+                        <div class="text-danger small">{{ form.nuyen_awarded.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.encounters_faced.id_for_label }}" class="form-label">Encounters</label>
+                    {{ form.encounters_faced }}
+                    {% if form.encounters_faced.errors %}
+                        <div class="text-danger small">{{ form.encounters_faced.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.enemies_defeated.id_for_label }}" class="form-label">Enemies Defeated</label>
+                    {{ form.enemies_defeated }}
+                    {% if form.enemies_defeated.errors %}
+                        <div class="text-danger small">{{ form.enemies_defeated.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Important Events -->
+            <h5 class="mb-3 mt-4">Important Events</h5>
+            <div class="mb-3">
+                <label for="{{ form.objectives_completed.id_for_label }}" class="form-label">Objectives Completed</label>
+                {{ form.objectives_completed }}
+                {% if form.objectives_completed.errors %}
+                    <div class="text-danger small">{{ form.objectives_completed.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.important_npcs.id_for_label }}" class="form-label">Important NPCs</label>
+                {{ form.important_npcs }}
+                {% if form.important_npcs.errors %}
+                    <div class="text-danger small">{{ form.important_npcs.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.loot_acquired.id_for_label }}" class="form-label">Loot Acquired</label>
+                {{ form.loot_acquired }}
+                {% if form.loot_acquired.errors %}
+                    <div class="text-danger small">{{ form.loot_acquired.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Buttons -->
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Session
+                </button>
+                <a href="{% if session %}{% url 'campaigns:session_detail' campaign.pk session.pk %}{% else %}{% url 'campaigns:detail' campaign.pk %}{% endif %}"
+                   class="btn btn-secondary">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

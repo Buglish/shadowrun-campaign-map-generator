@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Campaigns - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-map"></i> My Campaigns</h1>
+    </div>
+    <div class="col text-end">
+        <a href="{% url 'campaigns:create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Create Campaign
+        </a>
+    </div>
+</div>
+
+{% if not campaigns %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> You don't have any campaigns yet. Create your first campaign to get started!
+    </div>
+{% else %}
+    <!-- GM Campaigns -->
+    {% if gm_campaigns %}
+        <h3 class="mt-4 mb-3"><i class="bi bi-person-badge"></i> Campaigns You're GMing</h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+            {% for campaign in gm_campaigns %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="{% url 'campaigns:detail' campaign.pk %}" class="text-decoration-none">
+                                    {{ campaign.name }}
+                                </a>
+                            </h5>
+                            <p class="card-text">
+                                <span class="badge bg-{{ campaign.status|lower }}">
+                                    {% if campaign.status == 'active' %}
+                                        bg-success
+                                    {% elif campaign.status == 'planning' %}
+                                        bg-info
+                                    {% elif campaign.status == 'on_hold' %}
+                                        bg-warning
+                                    {% else %}
+                                        bg-secondary
+                                    {% endif %}
+                                </span>
+                                <span class="badge
+                                    {% if campaign.status == 'active' %}bg-success
+                                    {% elif campaign.status == 'planning' %}bg-info
+                                    {% elif campaign.status == 'on_hold' %}bg-warning
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ campaign.get_status_display }}
+                                </span>
+                            </p>
+                            {% if campaign.description %}
+                                <p class="card-text text-muted small">{{ campaign.description|truncatewords:20 }}</p>
+                            {% endif %}
+                            <p class="card-text small">
+                                <i class="bi bi-calendar-event"></i> {{ campaign.session_count }} session{{ campaign.session_count|pluralize }}<br>
+                                <i class="bi bi-people"></i> {{ campaign.characters.count }} character{{ campaign.characters.count|pluralize }}<br>
+                                <i class="bi bi-map"></i> {{ campaign.maps.count }} map{{ campaign.maps.count|pluralize }}
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <small class="text-muted">Updated {{ campaign.updated_at|timesince }} ago</small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Player Campaigns -->
+    {% if player_campaigns %}
+        <h3 class="mt-4 mb-3"><i class="bi bi-person"></i> Campaigns You're Playing</h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for campaign in player_campaigns %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="{% url 'campaigns:detail' campaign.pk %}" class="text-decoration-none">
+                                    {{ campaign.name }}
+                                </a>
+                            </h5>
+                            <p class="card-text">
+                                <span class="badge
+                                    {% if campaign.status == 'active' %}bg-success
+                                    {% elif campaign.status == 'planning' %}bg-info
+                                    {% elif campaign.status == 'on_hold' %}bg-warning
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ campaign.get_status_display }}
+                                </span>
+                            </p>
+                            <p class="card-text small">
+                                <i class="bi bi-person-badge"></i> GM: {{ campaign.game_master.username }}<br>
+                                <i class="bi bi-calendar-event"></i> {{ campaign.completed_session_count }} session{{ campaign.completed_session_count|pluralize }} completed
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <small class="text-muted">Updated {{ campaign.updated_at|timesince }} ago</small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endif %}
+{% endblock %}

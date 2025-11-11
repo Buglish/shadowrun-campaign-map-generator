@@ -16,14 +16,42 @@
                         <h5><i class="bi bi-magic"></i> Procedural Map Generation</h5>
                         <p class="mb-0">
                             Create a new map automatically using procedural generation.
-                            You can optionally provide a seed for reproducible results.
+                            You can customize algorithm parameters to fine-tune the generation.
+                            Optionally provide a seed for reproducible results.
                         </p>
                     </div>
 
-                    <form method="post">
+                    <form method="post" id="generateForm">
                         {% csrf_token %}
                         {% crispy form %}
                     </form>
+
+                    <div id="previewSection" style="display: none;" class="mt-4">
+                        <hr>
+                        <h4>Map Preview</h4>
+                        <div class="alert alert-info">
+                            <strong>Preview Generated!</strong> Review the map below. You can accept and save it, or regenerate with different parameters.
+                            <div class="mt-2">
+                                <strong>Seed:</strong> <span id="previewSeed"></span>
+                            </div>
+                        </div>
+
+                        <div id="previewMapContainer" style="overflow: auto; max-height: 600px; border: 2px solid #ddd; padding: 10px; background-color: #f5f5f5;">
+                            <!-- Map preview will be rendered here -->
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-success" id="acceptButton">
+                                <i class="bi bi-check-circle"></i> Accept and Save Map
+                            </button>
+                            <button type="button" class="btn btn-warning" id="regenerateButton">
+                                <i class="bi bi-arrow-clockwise"></i> Regenerate
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="cancelButton">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
 
                     <hr>
 
@@ -67,4 +95,194 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const algorithmSelect = document.getElementById('id_algorithm');
+    const generateForm = document.getElementById('generateForm');
+    const previewSection = document.getElementById('previewSection');
+    const previewMapContainer = document.getElementById('previewMapContainer');
+    const previewSeed = document.getElementById('previewSeed');
+    const acceptButton = document.getElementById('acceptButton');
+    const regenerateButton = document.getElementById('regenerateButton');
+    const cancelButton = document.getElementById('cancelButton');
+
+    function updateParameterVisibility() {
+        // Hide all parameter sections
+        document.getElementById('bsp-params').style.display = 'none';
+        document.getElementById('cellular-params').style.display = 'none';
+        document.getElementById('randomwalk-params').style.display = 'none';
+        document.getElementById('maze-params').style.display = 'none';
+
+        // Show the appropriate section based on selected algorithm
+        const algorithm = algorithmSelect.value;
+        if (algorithm === 'bsp') {
+            document.getElementById('bsp-params').style.display = 'block';
+        } else if (algorithm === 'cellular_automata') {
+            document.getElementById('cellular-params').style.display = 'block';
+        } else if (algorithm === 'random_walk') {
+            document.getElementById('randomwalk-params').style.display = 'block';
+        } else if (algorithm === 'maze') {
+            document.getElementById('maze-params').style.display = 'block';
+        }
+    }
+
+    // Update visibility on page load
+    updateParameterVisibility();
+
+    // Update visibility when algorithm selection changes
+    algorithmSelect.addEventListener('change', updateParameterVisibility);
+
+    // Intercept form submission to generate preview
+    generateForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        generatePreview();
+    });
+
+    function generatePreview() {
+        // Show loading state
+        const submitButton = generateForm.querySelector('input[type="submit"], button[type="submit"]');
+        if (!submitButton) {
+            console.error('Submit button not found');
+            return;
+        }
+        const originalText = submitButton.value || submitButton.innerHTML;
+        if (submitButton.tagName === 'INPUT') {
+            submitButton.value = 'Generating Preview...';
+        } else {
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating Preview...';
+        }
+        submitButton.disabled = true;
+
+        // Get form data
+        const formData = new FormData(generateForm);
+
+        // Send AJAX request to preview endpoint
+        fetch('{% url "maps:generate_preview" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Display the preview
+                displayPreview(data);
+                // Scroll to preview
+                previewSection.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                alert('Error generating preview: ' + JSON.stringify(data.errors));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while generating the preview.');
+        })
+        .finally(() => {
+            // Restore button state
+            if (submitButton.tagName === 'INPUT') {
+                submitButton.value = originalText;
+            } else {
+                submitButton.innerHTML = originalText;
+            }
+            submitButton.disabled = false;
+        });
+    }
+
+    function displayPreview(data) {
+        // Show preview section
+        previewSection.style.display = 'block';
+
+        // Display seed
+        previewSeed.textContent = data.seed;
+
+        // Render the map
+        const tileSize = 20; // pixels per tile
+        const mapHtml = renderMapGrid(data.tiles, data.width, data.height, tileSize);
+        previewMapContainer.innerHTML = mapHtml;
+    }
+
+    function renderMapGrid(tiles, width, height, tileSize) {
+        // Create a 2D array for quick lookup
+        const grid = {};
+        tiles.forEach(tile => {
+            const key = `${tile.x},${tile.y}`;
+            grid[key] = tile;
+        });
+
+        // Build HTML for the grid
+        let html = '<div style="display: inline-block;">';
+        for (let y = 0; y < height; y++) {
+            html += '<div style="line-height: 0;">';
+            for (let x = 0; x < width; x++) {
+                const tile = grid[`${x},${y}`] || { color: '#FFFFFF' };
+                html += `<div style="display: inline-block; width: ${tileSize}px; height: ${tileSize}px; background-color: ${tile.color}; border: 1px solid #ddd;" title="${tile.terrain_type || 'empty'} (${x},${y})"></div>`;
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // Handle accept button click
+    acceptButton.addEventListener('click', function() {
+        // Show loading state
+        const originalAcceptText = acceptButton.innerHTML;
+        acceptButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+        acceptButton.disabled = true;
+
+        // Create form data with confirm_save flag
+        const formData = new FormData(generateForm);
+        formData.append('confirm_save', 'true');
+
+        // Send AJAX request to save the map
+        fetch('{% url "maps:generate" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect to the map detail page
+                window.location.href = data.redirect_url;
+            } else {
+                alert('Error saving map: ' + JSON.stringify(data.errors || data.error));
+                acceptButton.innerHTML = originalAcceptText;
+                acceptButton.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while saving the map.');
+            acceptButton.innerHTML = originalAcceptText;
+            acceptButton.disabled = false;
+        });
+    });
+
+    // Handle regenerate button click
+    regenerateButton.addEventListener('click', function() {
+        // Hide preview and allow user to modify parameters
+        previewSection.style.display = 'none';
+        // Scroll back to form
+        generateForm.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Handle cancel button click
+    cancelButton.addEventListener('click', function() {
+        // Hide preview
+        previewSection.style.display = 'none';
+        // Optionally redirect back to maps list
+        if (confirm('Are you sure you want to cancel? The preview will be discarded.')) {
+            window.location.href = '{% url "maps:list" %}';
+        } else {
+            previewSection.style.display = 'block';
+        }
+    });
+});
+</script>
 {% endblock %}

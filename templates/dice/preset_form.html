@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Preset - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>{{ action }} Dice Preset</h1>
+            <a href="{% url 'dice:preset_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Presets
+            </a>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <p class="text-muted">
+                    Save commonly used dice pools for quick access. Presets can be associated with specific characters
+                    or kept as general presets.
+                </p>
+                {% crispy form %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

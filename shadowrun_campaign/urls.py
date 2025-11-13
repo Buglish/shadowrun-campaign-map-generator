@@ -27,6 +27,7 @@ urlpatterns = [
     path('characters/', include('characters.urls')),
     path('maps/', include('maps.urls')),
     path('campaigns/', include('campaigns.urls')),
+    path('dice/', include('dice.urls')),
 ]
 
 # Serve media files in development

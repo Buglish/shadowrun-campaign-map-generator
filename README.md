@@ -54,9 +54,13 @@ This application aims to provide a comprehensive platform for Shadowrun campaign
 ### Prerequisites
 - Python 3.8 or higher
 - Virtual environment (recommended)
-- MySQL (optional, for production)
+- **Choose one database:**
+  - SQLite (included with Python, for development/testing)
+  - MySQL (recommended for production or concurrent usage)
 
-### Setup Instructions
+### Initial Setup (Common Steps)
+
+Follow these steps regardless of which database you choose:
 
 1. **Clone the repository**
 ```bash
@@ -70,15 +74,98 @@ python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. **Install dependencies**
+3. **Install base dependencies**
 ```bash
 venv/bin/pip install -r requirements.txt
 ```
 
-4. **Configure environment variables** (optional)
+4. **Configure environment variables**
 ```bash
 cp .env.example .env
-# Edit .env with your settings
+# Edit .env with your settings (especially database configuration)
+```
+
+Now choose your database path:
+
+---
+
+### Option A: SQLite Setup (Quick Start)
+
+**Best for:** Development, testing, single-user usage
+
+**Pros:** No installation needed, simple setup
+**Cons:** May encounter "database is locked" errors under concurrent load
+
+#### Steps:
+
+1. **Ensure `.env` uses SQLite** (default):
+```bash
+USE_MYSQL=False
+# or simply leave USE_MYSQL commented out
+```
+
+2. **Run database migrations**
+```bash
+venv/bin/python manage.py migrate
+```
+
+3. **Create a superuser** (for admin access)
+```bash
+venv/bin/python manage.py createsuperuser
+```
+
+4. **Populate sample data** (recommended)
+```bash
+venv/bin/python manage.py populate_sample_data
+```
+This adds default Shadowrun qualities, gear, weapons, armor, and cyberware. Without this, the character creation wizard (especially step 4: Qualities) will be empty.
+
+5. **Run the development server**
+```bash
+venv/bin/python manage.py runserver
+```
+
+6. **Access the application**
+- Main site: http://localhost:8000
+- Admin panel: http://localhost:8000/admin
+
+---
+
+### Option B: MySQL Setup (Recommended for Production)
+
+**Best for:** Production deployments, multi-user environments, avoiding database locks
+
+**Pros:** Better concurrency, no locking issues, production-ready
+**Cons:** Requires MySQL installation and configuration
+
+#### Path 1: MySQL Already Installed and Running
+
+If MySQL is already installed:
+
+1. **Install build tools and MySQL development headers**
+```bash
+sudo apt update
+sudo apt install libmysqlclient-dev pkg-config build-essential python3-dev
+```
+
+2. **Install MySQL Python client**
+```bash
+venv/bin/pip install mysqlclient
+```
+
+3. **Create the database**
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS shadowrun_campaign CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+4. **Update `.env` file** with your MySQL credentials:
+```bash
+USE_MYSQL=True
+DB_NAME=shadowrun_campaign
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_HOST=localhost
+DB_PORT=3306
 ```
 
 5. **Run database migrations**
@@ -86,39 +173,109 @@ cp .env.example .env
 venv/bin/python manage.py migrate
 ```
 
-6. **Create a superuser** (for admin access)
+6. **Create a superuser**
 ```bash
 venv/bin/python manage.py createsuperuser
 ```
 
-7. **Run the development server**
+7. **Populate sample data**
+```bash
+venv/bin/python manage.py populate_sample_data
+```
+
+8. **Run the development server**
 ```bash
 venv/bin/python manage.py runserver
 ```
 
-8. **Access the application**
+9. **Access the application**
 - Main site: http://localhost:8000
 - Admin panel: http://localhost:8000/admin
 
-### MySQL Configuration (Optional)
+#### Path 2: Install MySQL from Scratch
 
-By default, the project uses SQLite for development. To use MySQL:
+If MySQL is not installed:
 
-1. Install MySQL client library:
+1. **Install MySQL Server and build tools** (Ubuntu/Debian):
 ```bash
-apt install libmysqlclient-dev pkg-config
-venv/bin/pip install mysqlclient==2.2.1
+sudo apt update
+sudo apt install mysql-server libmysqlclient-dev pkg-config build-essential python3-dev
 ```
 
-2. Update your `.env` file:
+2. **Start and enable MySQL service**
+```bash
+sudo systemctl start mysql
+sudo systemctl enable mysql
 ```
+
+3. **Verify MySQL is running**
+```bash
+sudo systemctl status mysql
+```
+You should see "active (running)" in green.
+
+4. **Set MySQL root password**
+```bash
+sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your-password-here'; FLUSH PRIVILEGES;"
+```
+Replace `your-password-here` with your desired password.
+
+5. **Install MySQL Python client**
+```bash
+venv/bin/pip install mysqlclient
+```
+
+6. **Create the database**
+```bash
+mysql -u root -prootpassword -e "CREATE DATABASE IF NOT EXISTS shadowrun_campaign CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+Note: No space between `-p` and your password.
+
+7. **Update `.env` file** with your MySQL credentials:
+```bash
 USE_MYSQL=True
 DB_NAME=shadowrun_campaign
-DB_USER=your_username
-DB_PASSWORD=your_password
+DB_USER=root
+DB_PASSWORD=your-password-here
 DB_HOST=localhost
 DB_PORT=3306
 ```
+
+8. **Run database migrations**
+```bash
+venv/bin/python manage.py migrate
+```
+
+9. **Create a superuser**
+```bash
+venv/bin/python manage.py createsuperuser
+```
+
+10. **Populate sample data**
+```bash
+venv/bin/python manage.py populate_sample_data
+```
+
+11. **Run the development server**
+```bash
+venv/bin/python manage.py runserver
+```
+
+12. **Access the application**
+- Main site: http://localhost:8000
+- Admin panel: http://localhost:8000/admin
+
+---
+
+### Switching Between SQLite and MySQL
+
+To switch databases after initial setup:
+
+1. Update `USE_MYSQL` in `.env` (True for MySQL, False for SQLite)
+2. Run migrations: `venv/bin/python manage.py migrate`
+3. Restart the server
+
+**Note:** Data is not automatically transferred between databases. You'll need to export/import data or use fixtures if switching with existing data.
 
 ## Project Structure
 

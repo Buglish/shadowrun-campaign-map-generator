@@ -2,44 +2,63 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
+import logging
 from .models import Campaign, Session, SessionObjective
 from .forms import CampaignForm, SessionForm
 from characters.models import Character
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
 def campaign_list(request):
     """List all campaigns accessible to the user"""
-    # Get campaigns where user is GM or player
-    campaigns = Campaign.objects.filter(
-        Q(game_master=request.user) | Q(players=request.user)
-    ).distinct()
+    try:
+        # Get campaigns where user is GM or player
+        campaigns = Campaign.objects.filter(
+            Q(game_master=request.user) | Q(players=request.user)
+        ).distinct()
 
-    context = {
-        'campaigns': campaigns,
-        'gm_campaigns': campaigns.filter(game_master=request.user),
-        'player_campaigns': campaigns.filter(players=request.user).exclude(game_master=request.user),
-    }
-    return render(request, 'campaigns/list.html', context)
+        context = {
+            'campaigns': campaigns,
+            'gm_campaigns': campaigns.filter(game_master=request.user),
+            'player_campaigns': campaigns.filter(players=request.user).exclude(game_master=request.user),
+        }
+        logger.info(f"User {request.user.username} accessed campaign list")
+        return render(request, 'campaigns/list.html', context)
+    except Exception as e:
+        logger.error(f"Error in campaign_list for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading campaigns.')
+        return redirect('home')
 
 
 @login_required
 def campaign_create(request):
     """Create a new campaign"""
-    if request.method == 'POST':
-        form = CampaignForm(request.POST, user=request.user)
-        if form.is_valid():
-            campaign = form.save(commit=False)
-            campaign.game_master = request.user
-            campaign.save()
-            form.save_m2m()  # Save many-to-many relationships
-            messages.success(request, f'Campaign "{campaign.name}" created successfully!')
-            return redirect('campaigns:detail', pk=campaign.pk)
-    else:
-        form = CampaignForm(user=request.user)
+    try:
+        if request.method == 'POST':
+            form = CampaignForm(request.POST, user=request.user)
+            if form.is_valid():
+                try:
+                    campaign = form.save(commit=False)
+                    campaign.game_master = request.user
+                    campaign.save()
+                    form.save_m2m()  # Save many-to-many relationships
+                    logger.info(f"User {request.user.username} created campaign '{campaign.name}' (ID: {campaign.pk})")
+                    messages.success(request, f'Campaign "{campaign.name}" created successfully!')
+                    return redirect('campaigns:detail', pk=campaign.pk)
+                except Exception as e:
+                    logger.error(f"Error saving campaign for user {request.user.username}: {str(e)}", exc_info=True)
+                    messages.error(request, 'Failed to create campaign. Please try again.')
+        else:
+            form = CampaignForm(user=request.user)
 
-    context = {'form': form, 'action': 'Create'}
-    return render(request, 'campaigns/form.html', context)
+        context = {'form': form, 'action': 'Create'}
+        return render(request, 'campaigns/form.html', context)
+    except Exception as e:
+        logger.error(f"Error in campaign_create for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred. Please try again.')
+        return redirect('campaigns:list')
 
 
 @login_required

@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Dice Roller - Shadowrun Campaign Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dice-result {
+        font-size: 2rem;
+        margin: 20px 0;
+    }
+    .die {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        line-height: 50px;
+        text-align: center;
+        margin: 5px;
+        border: 2px solid #333;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
+    .die-hit {
+        background-color: #198754;
+        color: white;
+        border-color: #146c43;
+    }
+    .die-one {
+        background-color: #dc3545;
+        color: white;
+        border-color: #b02a37;
+    }
+    .die-normal {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+    .glitch-warning {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    .critical-glitch-warning {
+        background-color: #f8d7da;
+        border-left: 4px solid #dc3545;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    .preset-card {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .preset-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .quick-roll-form {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+    @media (max-width: 768px) {
+        .quick-roll-form {
+            position: static;
+            margin: 20px 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-dice-6"></i> Shadowrun Dice Roller</h1>
+            <div>
+                <a href="{% url 'dice:history' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-clock-history"></i> Roll History
+                </a>
+                <a href="{% url 'dice:preset_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-bookmark"></i> Presets
+                </a>
+            </div>
+        </div>
+
+        <!-- Dice Rolling Rules Info -->
+        <div class="alert alert-info">
+            <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Shadowrun Dice Rules</h5>
+            <ul class="mb-0">
+                <li><strong>Hits:</strong> Each 5 or 6 counts as a hit</li>
+                <li><strong>Rule of Six:</strong> Each 6 explodes and adds an additional die</li>
+                <li><strong>Glitch:</strong> More than half the dice show 1</li>
+                <li><strong>Critical Glitch:</strong> Glitch with zero hits</li>
+                <li><strong>Edge:</strong> Push your luck with Edge points</li>
+            </ul>
+        </div>
+
+        <!-- Main Roll Form -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-3">Roll Dice</h3>
+                {% crispy form %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Recent Rolls -->
+        {% if recent_rolls %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Recent Rolls</h5>
+                <div class="list-group list-group-flush">
+                    {% for roll in recent_rolls %}
+                    <a href="{% url 'dice:roll_detail' roll.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                {% if roll.description %}
+                                    {{ roll.description }}
+                                {% else %}
+                                    {{ roll.pool_size }}d6
+                                {% endif %}
+                            </h6>
+                            <small class="text-muted">{{ roll.timestamp|timesince }} ago</small>
+                        </div>
+                        <p class="mb-1">
+                            <span class="badge bg-primary">{{ roll.total_hits }} hit{{ roll.total_hits|pluralize }}</span>
+                            {% if roll.is_critical_glitch %}
+                                <span class="badge bg-danger">Critical Glitch!</span>
+                            {% elif roll.is_glitch %}
+                                <span class="badge bg-warning text-dark">Glitch</span>
+                            {% endif %}
+                            {% if roll.success == True %}
+                                <span class="badge bg-success">Success</span>
+                            {% elif roll.success == False %}
+                                <span class="badge bg-secondary">Failed</span>
+                            {% endif %}
+                        </p>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Presets -->
+        {% if presets %}
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Quick Presets</h5>
+                <div class="d-grid gap-2">
+                    {% for preset in presets|slice:":5" %}
+                    <a href="{% url 'dice:preset_roll' preset.pk %}" class="btn btn-outline-primary text-start">
+                        <strong>{{ preset.name }}</strong>
+                        <br>
+                        <small>{{ preset.pool_size }}d6
+                            {% if preset.threshold %} (Threshold: {{ preset.threshold }}){% endif %}
+                        </small>
+                    </a>
+                    {% endfor %}
+                </div>
+                <a href="{% url 'dice:preset_list' %}" class="btn btn-sm btn-link mt-2">View all presets</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any interactive JavaScript here for future enhancements
+    // For now, the form works with standard POST submission
+</script>
+{% endblock %}

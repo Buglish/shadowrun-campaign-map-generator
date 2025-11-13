@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'characters',
     'maps',
     'campaigns',
+    'dice',
 ]
 
 # Crispy Forms Configuration
@@ -66,6 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'shadowrun_campaign.middleware.ExceptionLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'shadowrun_campaign.urls'
@@ -112,6 +114,10 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,  # 20 seconds timeout for database locks
+                'init_command': 'PRAGMA journal_mode=WAL;',  # Write-Ahead Logging for better concurrency
+            },
         }
     }
 
@@ -167,3 +173,107 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {name} {module}.{funcName}:{lineno} - {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[{levelname}] {asctime} - {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file_error': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'error.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'file_debug': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'debug.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+        },
+        'file_general': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'general.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file_error', 'file_general'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'file_error'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['console', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'accounts': {
+            'handlers': ['console', 'file_error', 'file_general', 'file_debug'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'characters': {
+            'handlers': ['console', 'file_error', 'file_general', 'file_debug'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'maps': {
+            'handlers': ['console', 'file_error', 'file_general', 'file_debug'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'campaigns': {
+            'handlers': ['console', 'file_error', 'file_general', 'file_debug'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'dice': {
+            'handlers': ['console', 'file_error', 'file_general', 'file_debug'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file_error'],
+        'level': 'INFO',
+    },
+}

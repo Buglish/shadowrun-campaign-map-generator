@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
+import logging
 from .models import Character, Quality, CharacterQuality, Gear, CharacterGear
 from .forms import (
     CharacterBasicInfoForm, CharacterRoleHistoryForm, CharacterPrioritiesForm,
@@ -9,47 +10,71 @@ from .forms import (
     CharacterGearSelectionForm, CharacterFinishingForm
 )
 
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def character_list(request):
     """List all characters for the current user"""
-    characters = Character.objects.filter(user=request.user)
-    context = {'characters': characters}
-    return render(request, 'characters/list.html', context)
+    try:
+        characters = Character.objects.filter(user=request.user)
+        context = {'characters': characters}
+        logger.info(f"User {request.user.username} accessed character list")
+        return render(request, 'characters/list.html', context)
+    except Exception as e:
+        logger.error(f"Error in character_list for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading characters.')
+        return redirect('home')
 
 
 @login_required
 def character_create(request):
     """Start character creation wizard"""
-    # Clear any existing session data
-    request.session['character_creation'] = {}
-    request.session['character_id'] = None
-    return redirect('characters:create_step1')
+    try:
+        # Clear any existing session data
+        request.session['character_creation'] = {}
+        request.session['character_id'] = None
+        logger.info(f"User {request.user.username} started character creation")
+        return redirect('characters:create_step1')
+    except Exception as e:
+        logger.error(f"Error in character_create for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred. Please try again.')
+        return redirect('characters:list')
 
 
 @login_required
 def character_create_step1(request):
     """Step 1: Basic Info - Name, Race, Archetype"""
-    character_id = request.session.get('character_id')
-    character = None
-    if character_id:
-        character = get_object_or_404(Character, pk=character_id, user=request.user)
+    try:
+        character_id = request.session.get('character_id')
+        character = None
+        if character_id:
+            character = get_object_or_404(Character, pk=character_id, user=request.user)
 
-    if request.method == 'POST':
-        form = CharacterBasicInfoForm(request.POST, instance=character)
-        if form.is_valid():
-            character = form.save(commit=False)
-            character.user = request.user
-            character.creation_step = 1
-            character.save()
-            request.session['character_id'] = character.id
-            messages.success(request, 'Basic information saved!')
-            return redirect('characters:create_step2')
-    else:
-        form = CharacterBasicInfoForm(instance=character)
+        if request.method == 'POST':
+            form = CharacterBasicInfoForm(request.POST, instance=character)
+            if form.is_valid():
+                try:
+                    character = form.save(commit=False)
+                    character.user = request.user
+                    character.creation_step = 1
+                    character.save()
+                    request.session['character_id'] = character.id
+                    logger.info(f"User {request.user.username} completed character creation step 1 for character {character.id}")
+                    messages.success(request, 'Basic information saved!')
+                    return redirect('characters:create_step2')
+                except Exception as e:
+                    logger.error(f"Error saving character step 1 for user {request.user.username}: {str(e)}", exc_info=True)
+                    messages.error(request, 'Failed to save character. Please try again.')
+        else:
+            form = CharacterBasicInfoForm(instance=character)
 
-    context = {'form': form, 'step': 1, 'step_name': 'Basic Information'}
-    return render(request, 'characters/create_step.html', context)
+        context = {'form': form, 'step': 1, 'step_name': 'Basic Information'}
+        return render(request, 'characters/create_step.html', context)
+    except Exception as e:
+        logger.error(f"Error in character_create_step1 for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred. Please try again.')
+        return redirect('characters:list')
 
 
 @login_required

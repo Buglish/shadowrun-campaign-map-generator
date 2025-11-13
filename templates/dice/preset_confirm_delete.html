@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Preset - Shadowrun Campaign Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Delete Preset</h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to delete the preset "<strong>{{ preset.name }}</strong>"?</p>
+                <p class="text-muted">
+                    This action cannot be undone. The preset will be permanently deleted.
+                </p>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5>{{ preset.name }}</h5>
+                        <p class="mb-0">
+                            <span class="badge bg-secondary">{{ preset.pool_size }}d6</span>
+                            {% if preset.threshold %}
+                                <span class="badge bg-info">Threshold: {{ preset.threshold }}</span>
+                            {% endif %}
+                            {% if preset.character %}
+                                <span class="badge bg-primary">Character: {{ preset.character.name }}</span>
+                            {% endif %}
+                        </p>
+                        {% if preset.description %}
+                        <p class="text-muted mt-2 mb-0"><small>{{ preset.description }}</small></p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Yes, Delete Preset
+                    </button>
+                    <a href="{% url 'dice:preset_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

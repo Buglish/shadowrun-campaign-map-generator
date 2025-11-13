@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 import random
 import json
+import logging
 
 from . import models
 from .forms import MapForm, MapObjectForm, MapGenerationForm, MapGenerationPresetForm
@@ -15,114 +16,161 @@ from .generators import (
     generate_maze_map
 )
 
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def map_list(request):
     """List all maps accessible to the user"""
-    # Get user's own maps and maps shared with them
-    user_maps = models.Map.objects.filter(owner=request.user)
-    shared_maps = models.Map.objects.filter(shared_with=request.user)
-    public_maps = models.Map.objects.filter(is_public=True).exclude(owner=request.user)
+    try:
+        # Get user's own maps and maps shared with them
+        user_maps = models.Map.objects.filter(owner=request.user)
+        shared_maps = models.Map.objects.filter(shared_with=request.user)
+        public_maps = models.Map.objects.filter(is_public=True).exclude(owner=request.user)
 
-    context = {
-        'user_maps': user_maps,
-        'shared_maps': shared_maps,
-        'public_maps': public_maps,
-    }
-    return render(request, 'maps/list.html', context)
+        context = {
+            'user_maps': user_maps,
+            'shared_maps': shared_maps,
+            'public_maps': public_maps,
+        }
+        logger.info(f"User {request.user.username} accessed map list")
+        return render(request, 'maps/list.html', context)
+    except Exception as e:
+        logger.error(f"Error in map_list for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading maps.')
+        return redirect('home')
 
 
 @login_required
 def map_create(request):
     """Create a new map"""
-    if request.method == 'POST':
-        form = MapForm(request.POST)
-        if form.is_valid():
-            map_obj = form.save(commit=False)
-            map_obj.owner = request.user
-            map_obj.save()
+    try:
+        if request.method == 'POST':
+            form = MapForm(request.POST)
+            if form.is_valid():
+                try:
+                    map_obj = form.save(commit=False)
+                    map_obj.owner = request.user
+                    map_obj.save()
 
-            # Initialize the map with default floor tiles
-            for y in range(map_obj.height):
-                for x in range(map_obj.width):
-                    models.MapTile.objects.create(
-                        map=map_obj,
-                        x=x,
-                        y=y,
-                        terrain_type='floor',
-                        is_walkable=True,
-                        is_transparent=True,
-                        color='#E8E8E8'
-                    )
+                    # Initialize the map with default floor tiles
+                    for y in range(map_obj.height):
+                        for x in range(map_obj.width):
+                            models.MapTile.objects.create(
+                                map=map_obj,
+                                x=x,
+                                y=y,
+                                terrain_type='floor',
+                                is_walkable=True,
+                                is_transparent=True,
+                                color='#E8E8E8'
+                            )
 
-            messages.success(request, f'Map "{map_obj.name}" created successfully!')
-            return redirect('maps:detail', pk=map_obj.pk)
-    else:
-        form = MapForm()
+                    logger.info(f"User {request.user.username} created map '{map_obj.name}' (ID: {map_obj.pk})")
+                    messages.success(request, f'Map "{map_obj.name}" created successfully!')
+                    return redirect('maps:detail', pk=map_obj.pk)
+                except Exception as e:
+                    logger.error(f"Error creating map for user {request.user.username}: {str(e)}", exc_info=True)
+                    messages.error(request, 'Failed to create map. Please try again.')
+                    return redirect('maps:list')
+        else:
+            form = MapForm()
 
-    context = {'form': form, 'action': 'Create'}
-    return render(request, 'maps/form.html', context)
+        context = {'form': form, 'action': 'Create'}
+        return render(request, 'maps/form.html', context)
+    except Exception as e:
+        logger.error(f"Error in map_create for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred. Please try again.')
+        return redirect('maps:list')
 
 
 @login_required
 def map_detail(request, pk):
     """View map details and builder interface"""
-    map_obj = get_object_or_404(models.Map, pk=pk)
+    try:
+        map_obj = get_object_or_404(models.Map, pk=pk)
 
-    # Check if user has permission to view this map
-    if not (map_obj.owner == request.user or
-            request.user in map_obj.shared_with.all() or
-            map_obj.is_public):
-        messages.error(request, 'You do not have permission to view this map.')
+        # Check if user has permission to view this map
+        if not (map_obj.owner == request.user or
+                request.user in map_obj.shared_with.all() or
+                map_obj.is_public):
+            logger.warning(f"User {request.user.username} attempted to access unauthorized map {pk}")
+            messages.error(request, 'You do not have permission to view this map.')
+            return redirect('maps:list')
+
+        # Get all tiles and objects for this map
+        tiles = map_obj.tiles.all()
+        objects = map_obj.map_objects.all()
+
+        # Check if user can edit (only owner)
+        can_edit = map_obj.owner == request.user
+
+        context = {
+            'map': map_obj,
+            'tiles': tiles,
+            'objects': objects,
+            'can_edit': can_edit,
+        }
+        logger.info(f"User {request.user.username} viewed map '{map_obj.name}' (ID: {pk})")
+        return render(request, 'maps/detail.html', context)
+    except Exception as e:
+        logger.error(f"Error in map_detail for user {request.user.username}, map {pk}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading the map.')
         return redirect('maps:list')
-
-    # Get all tiles and objects for this map
-    tiles = map_obj.tiles.all()
-    objects = map_obj.map_objects.all()
-
-    # Check if user can edit (only owner)
-    can_edit = map_obj.owner == request.user
-
-    context = {
-        'map': map_obj,
-        'tiles': tiles,
-        'objects': objects,
-        'can_edit': can_edit,
-    }
-    return render(request, 'maps/detail.html', context)
 
 
 @login_required
 def map_edit(request, pk):
     """Edit a map's basic settings"""
-    map_obj = get_object_or_404(models.Map, pk=pk, owner=request.user)
+    try:
+        map_obj = get_object_or_404(models.Map, pk=pk, owner=request.user)
 
-    if request.method == 'POST':
-        form = MapForm(request.POST, instance=map_obj)
-        if form.is_valid():
-            form.save()
-            messages.success(request, f'Map "{map_obj.name}" updated successfully!')
-            return redirect('maps:detail', pk=map_obj.pk)
-    else:
-        form = MapForm(instance=map_obj)
+        if request.method == 'POST':
+            form = MapForm(request.POST, instance=map_obj)
+            if form.is_valid():
+                try:
+                    form.save()
+                    logger.info(f"User {request.user.username} updated map '{map_obj.name}' (ID: {pk})")
+                    messages.success(request, f'Map "{map_obj.name}" updated successfully!')
+                    return redirect('maps:detail', pk=map_obj.pk)
+                except Exception as e:
+                    logger.error(f"Error saving map {pk} for user {request.user.username}: {str(e)}", exc_info=True)
+                    messages.error(request, 'Failed to update map. Please try again.')
+        else:
+            form = MapForm(instance=map_obj)
 
-    context = {'form': form, 'map': map_obj, 'action': 'Edit'}
-    return render(request, 'maps/form.html', context)
+        context = {'form': form, 'map': map_obj, 'action': 'Edit'}
+        return render(request, 'maps/form.html', context)
+    except Exception as e:
+        logger.error(f"Error in map_edit for user {request.user.username}, map {pk}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred. Please try again.')
+        return redirect('maps:list')
 
 
 @login_required
 def map_delete(request, pk):
     """Delete a map"""
-    map_obj = get_object_or_404(models.Map, pk=pk, owner=request.user)
+    try:
+        map_obj = get_object_or_404(models.Map, pk=pk, owner=request.user)
 
-    if request.method == 'POST':
-        map_name = map_obj.name
-        map_obj.delete()
-        messages.success(request, f'Map "{map_name}" deleted successfully.')
+        if request.method == 'POST':
+            try:
+                map_name = map_obj.name
+                map_obj.delete()
+                logger.info(f"User {request.user.username} deleted map '{map_name}' (ID: {pk})")
+                messages.success(request, f'Map "{map_name}" deleted successfully.')
+                return redirect('maps:list')
+            except Exception as e:
+                logger.error(f"Error deleting map {pk} for user {request.user.username}: {str(e)}", exc_info=True)
+                messages.error(request, 'Failed to delete map. Please try again.')
+                return redirect('maps:detail', pk=pk)
+
+        context = {'map': map_obj}
+        return render(request, 'maps/delete_confirm.html', context)
+    except Exception as e:
+        logger.error(f"Error in map_delete for user {request.user.username}, map {pk}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred. Please try again.')
         return redirect('maps:list')
-
-    context = {'map': map_obj}
-    return render(request, 'maps/delete_confirm.html', context)
 
 
 @login_required
@@ -187,166 +235,208 @@ def map_tile_update(request, pk):
             }, status=404)
 
     except (ValueError, TypeError) as e:
+        logger.error(f"Invalid data in map_tile_update for user {request.user.username}, map {pk}: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': f'Invalid data: {str(e)}'
         }, status=400)
+    except Exception as e:
+        logger.error(f"Unexpected error in map_tile_update for user {request.user.username}, map {pk}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'An unexpected error occurred'
+        }, status=500)
 
 
 @login_required
 def map_generate_preview(request):
     """Generate a map preview without saving to database"""
-    if request.method == 'POST':
-        form = MapGenerationForm(request.user, request.POST)
-        if form.is_valid():
-            # Extract form data
-            width = form.cleaned_data['width']
-            height = form.cleaned_data['height']
-            map_type = form.cleaned_data['map_type']
-            seed = form.cleaned_data.get('seed') or str(random.randint(1000, 9999))
-            algorithm = form.cleaned_data.get('algorithm', 'random')
+    try:
+        if request.method == 'POST':
+            form = MapGenerationForm(request.user, request.POST)
+            if form.is_valid():
+                try:
+                    # Extract form data
+                    width = form.cleaned_data['width']
+                    height = form.cleaned_data['height']
+                    map_type = form.cleaned_data['map_type']
+                    seed = form.cleaned_data.get('seed') or str(random.randint(1000, 9999))
+                    algorithm = form.cleaned_data.get('algorithm', 'random')
 
-            # Collect algorithm-specific parameters
-            params = {}
-            if algorithm == 'bsp':
-                if form.cleaned_data.get('min_room_size') is not None:
-                    params['min_room_size'] = form.cleaned_data['min_room_size']
-                if form.cleaned_data.get('max_room_size') is not None:
-                    params['max_room_size'] = form.cleaned_data['max_room_size']
-                if form.cleaned_data.get('corridor_width') is not None:
-                    params['corridor_width'] = form.cleaned_data['corridor_width']
-            elif algorithm == 'cellular_automata':
-                if form.cleaned_data.get('iterations') is not None:
-                    params['iterations'] = form.cleaned_data['iterations']
-                if form.cleaned_data.get('wall_probability') is not None:
-                    params['wall_probability'] = form.cleaned_data['wall_probability']
-            elif algorithm == 'random_walk':
-                if form.cleaned_data.get('steps') is not None:
-                    params['steps'] = form.cleaned_data['steps']
-                if form.cleaned_data.get('tunnel_width_probability') is not None:
-                    params['tunnel_width_probability'] = form.cleaned_data['tunnel_width_probability']
-            elif algorithm == 'maze':
-                if form.cleaned_data.get('path_width') is not None:
-                    params['path_width'] = form.cleaned_data['path_width']
+                    # Collect algorithm-specific parameters
+                    params = {}
+                    if algorithm == 'bsp':
+                        if form.cleaned_data.get('min_room_size') is not None:
+                            params['min_room_size'] = form.cleaned_data['min_room_size']
+                        if form.cleaned_data.get('max_room_size') is not None:
+                            params['max_room_size'] = form.cleaned_data['max_room_size']
+                        if form.cleaned_data.get('corridor_width') is not None:
+                            params['corridor_width'] = form.cleaned_data['corridor_width']
+                    elif algorithm == 'cellular_automata':
+                        if form.cleaned_data.get('iterations') is not None:
+                            params['iterations'] = form.cleaned_data['iterations']
+                        if form.cleaned_data.get('wall_probability') is not None:
+                            params['wall_probability'] = form.cleaned_data['wall_probability']
+                    elif algorithm == 'random_walk':
+                        if form.cleaned_data.get('steps') is not None:
+                            params['steps'] = form.cleaned_data['steps']
+                        if form.cleaned_data.get('tunnel_width_probability') is not None:
+                            params['tunnel_width_probability'] = form.cleaned_data['tunnel_width_probability']
+                    elif algorithm == 'maze':
+                        if form.cleaned_data.get('path_width') is not None:
+                            params['path_width'] = form.cleaned_data['path_width']
 
-            # Generate tile data without creating database objects
-            tile_data = generate_preview_tiles(width, height, map_type, seed, algorithm, params)
+                    # Generate tile data without creating database objects
+                    tile_data = generate_preview_tiles(width, height, map_type, seed, algorithm, params)
 
-            # Store data in session for later saving
-            request.session['preview_data'] = {
-                'name': form.cleaned_data['name'],
-                'width': width,
-                'height': height,
-                'map_type': map_type,
-                'seed': seed,
-                'algorithm': algorithm,
-                'params': params,
-                'tile_data': tile_data
-            }
+                    # Store data in session for later saving
+                    request.session['preview_data'] = {
+                        'name': form.cleaned_data['name'],
+                        'width': width,
+                        'height': height,
+                        'map_type': map_type,
+                        'seed': seed,
+                        'algorithm': algorithm,
+                        'params': params,
+                        'tile_data': tile_data
+                    }
 
-            return JsonResponse({
-                'success': True,
-                'width': width,
-                'height': height,
-                'tiles': tile_data,
-                'seed': seed
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'errors': form.errors
-            }, status=400)
+                    logger.info(f"User {request.user.username} generated map preview: {algorithm} {width}x{height}")
+                    return JsonResponse({
+                        'success': True,
+                        'width': width,
+                        'height': height,
+                        'tiles': tile_data,
+                        'seed': seed
+                    })
+                except Exception as e:
+                    logger.error(f"Error generating preview for user {request.user.username}: {str(e)}", exc_info=True)
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Failed to generate map preview'
+                    }, status=500)
+            else:
+                logger.warning(f"Invalid form data in map_generate_preview for user {request.user.username}: {form.errors}")
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
 
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+    except Exception as e:
+        logger.error(f"Unexpected error in map_generate_preview for user {request.user.username}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'An unexpected error occurred'
+        }, status=500)
 
 
 @login_required
 def map_generate(request):
     """Generate a map dynamically using presets"""
-    if request.method == 'POST':
-        # Check if this is a final save after preview
-        if request.POST.get('confirm_save') == 'true' and 'preview_data' in request.session:
-            preview_data = request.session['preview_data']
+    try:
+        if request.method == 'POST':
+            # Check if this is a final save after preview
+            if request.POST.get('confirm_save') == 'true' and 'preview_data' in request.session:
+                try:
+                    preview_data = request.session['preview_data']
 
-            # Create the map
-            map_obj = models.Map.objects.create(
-                name=preview_data['name'],
-                owner=request.user,
-                width=preview_data['width'],
-                height=preview_data['height'],
-                map_type=preview_data['map_type'],
-                is_generated=True,
-                generation_seed=preview_data['seed']
-            )
+                    # Create the map
+                    map_obj = models.Map.objects.create(
+                        name=preview_data['name'],
+                        owner=request.user,
+                        width=preview_data['width'],
+                        height=preview_data['height'],
+                        map_type=preview_data['map_type'],
+                        is_generated=True,
+                        generation_seed=preview_data['seed']
+                    )
 
-            # Create tiles from preview data
-            for tile_info in preview_data['tile_data']:
-                models.MapTile.objects.create(
-                    map=map_obj,
-                    x=tile_info['x'],
-                    y=tile_info['y'],
-                    terrain_type=tile_info['terrain_type'],
-                    is_walkable=tile_info['is_walkable'],
-                    is_transparent=tile_info['is_transparent'],
-                    color=tile_info['color']
-                )
+                    # Create tiles from preview data
+                    for tile_info in preview_data['tile_data']:
+                        models.MapTile.objects.create(
+                            map=map_obj,
+                            x=tile_info['x'],
+                            y=tile_info['y'],
+                            terrain_type=tile_info['terrain_type'],
+                            is_walkable=tile_info['is_walkable'],
+                            is_transparent=tile_info['is_transparent'],
+                            color=tile_info['color']
+                        )
 
-            # Clear preview data from session
-            del request.session['preview_data']
+                    # Clear preview data from session
+                    del request.session['preview_data']
 
-            messages.success(request, f'Map "{map_obj.name}" generated successfully!')
-            return JsonResponse({'success': True, 'redirect_url': f'/maps/{map_obj.pk}/'})
+                    logger.info(f"User {request.user.username} saved generated map '{map_obj.name}' (ID: {map_obj.pk})")
+                    messages.success(request, f'Map "{map_obj.name}" generated successfully!')
+                    return JsonResponse({'success': True, 'redirect_url': f'/maps/{map_obj.pk}/'})
+                except Exception as e:
+                    logger.error(f"Error saving generated map for user {request.user.username}: {str(e)}", exc_info=True)
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Failed to save generated map'
+                    }, status=500)
 
-        # Regular form submission (legacy support or direct save without preview)
-        form = MapGenerationForm(request.user, request.POST)
-        if form.is_valid():
-            # Create the map
-            map_obj = models.Map.objects.create(
-                name=form.cleaned_data['name'],
-                owner=request.user,
-                width=form.cleaned_data['width'],
-                height=form.cleaned_data['height'],
-                map_type=form.cleaned_data['map_type'],
-                is_generated=True,
-                generation_seed=form.cleaned_data.get('seed') or str(random.randint(1000, 9999))
-            )
+            # Regular form submission (legacy support or direct save without preview)
+            form = MapGenerationForm(request.user, request.POST)
+            if form.is_valid():
+                try:
+                    # Create the map
+                    map_obj = models.Map.objects.create(
+                        name=form.cleaned_data['name'],
+                        owner=request.user,
+                        width=form.cleaned_data['width'],
+                        height=form.cleaned_data['height'],
+                        map_type=form.cleaned_data['map_type'],
+                        is_generated=True,
+                        generation_seed=form.cleaned_data.get('seed') or str(random.randint(1000, 9999))
+                    )
 
-            # Get algorithm from form
-            algorithm = form.cleaned_data.get('algorithm', 'random')
+                    # Get algorithm from form
+                    algorithm = form.cleaned_data.get('algorithm', 'random')
 
-            # Collect algorithm-specific parameters
-            params = {}
-            if algorithm == 'bsp':
-                if form.cleaned_data.get('min_room_size') is not None:
-                    params['min_room_size'] = form.cleaned_data['min_room_size']
-                if form.cleaned_data.get('max_room_size') is not None:
-                    params['max_room_size'] = form.cleaned_data['max_room_size']
-                if form.cleaned_data.get('corridor_width') is not None:
-                    params['corridor_width'] = form.cleaned_data['corridor_width']
-            elif algorithm == 'cellular_automata':
-                if form.cleaned_data.get('iterations') is not None:
-                    params['iterations'] = form.cleaned_data['iterations']
-                if form.cleaned_data.get('wall_probability') is not None:
-                    params['wall_probability'] = form.cleaned_data['wall_probability']
-            elif algorithm == 'random_walk':
-                if form.cleaned_data.get('steps') is not None:
-                    params['steps'] = form.cleaned_data['steps']
-                if form.cleaned_data.get('tunnel_width_probability') is not None:
-                    params['tunnel_width_probability'] = form.cleaned_data['tunnel_width_probability']
-            elif algorithm == 'maze':
-                if form.cleaned_data.get('path_width') is not None:
-                    params['path_width'] = form.cleaned_data['path_width']
+                    # Collect algorithm-specific parameters
+                    params = {}
+                    if algorithm == 'bsp':
+                        if form.cleaned_data.get('min_room_size') is not None:
+                            params['min_room_size'] = form.cleaned_data['min_room_size']
+                        if form.cleaned_data.get('max_room_size') is not None:
+                            params['max_room_size'] = form.cleaned_data['max_room_size']
+                        if form.cleaned_data.get('corridor_width') is not None:
+                            params['corridor_width'] = form.cleaned_data['corridor_width']
+                    elif algorithm == 'cellular_automata':
+                        if form.cleaned_data.get('iterations') is not None:
+                            params['iterations'] = form.cleaned_data['iterations']
+                        if form.cleaned_data.get('wall_probability') is not None:
+                            params['wall_probability'] = form.cleaned_data['wall_probability']
+                    elif algorithm == 'random_walk':
+                        if form.cleaned_data.get('steps') is not None:
+                            params['steps'] = form.cleaned_data['steps']
+                        if form.cleaned_data.get('tunnel_width_probability') is not None:
+                            params['tunnel_width_probability'] = form.cleaned_data['tunnel_width_probability']
+                    elif algorithm == 'maze':
+                        if form.cleaned_data.get('path_width') is not None:
+                            params['path_width'] = form.cleaned_data['path_width']
 
-            # Generate tiles based on algorithm
-            generate_map_tiles(map_obj, algorithm=algorithm, params=params)
+                    # Generate tiles based on algorithm
+                    generate_map_tiles(map_obj, algorithm=algorithm, params=params)
 
-            messages.success(request, f'Map "{map_obj.name}" generated successfully!')
-            return redirect('maps:detail', pk=map_obj.pk)
-    else:
-        form = MapGenerationForm(request.user)
+                    logger.info(f"User {request.user.username} generated map '{map_obj.name}' (ID: {map_obj.pk}) with {algorithm}")
+                    messages.success(request, f'Map "{map_obj.name}" generated successfully!')
+                    return redirect('maps:detail', pk=map_obj.pk)
+                except Exception as e:
+                    logger.error(f"Error generating map for user {request.user.username}: {str(e)}", exc_info=True)
+                    messages.error(request, 'Failed to generate map. Please try again.')
+                    return redirect('maps:list')
+        else:
+            form = MapGenerationForm(request.user)
 
-    context = {'form': form}
-    return render(request, 'maps/generate.html', context)
+        context = {'form': form}
+        return render(request, 'maps/generate.html', context)
+    except Exception as e:
+        logger.error(f"Unexpected error in map_generate for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An unexpected error occurred.')
+        return redirect('maps:list')
 
 
 def generate_preview_tiles(width, height, map_type, seed, algorithm='random', params=None):

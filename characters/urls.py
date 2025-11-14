@@ -6,6 +6,7 @@ app_name = 'characters'
 urlpatterns = [
     path('', views.character_list, name='list'),
     path('create/', views.character_create, name='create'),
+    path('generate/', views.npc_generator, name='npc_generator'),
 
     # Character creation wizard steps
     path('create/step1/', views.character_create_step1, name='create_step1'),

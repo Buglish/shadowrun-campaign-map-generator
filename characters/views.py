@@ -7,18 +7,26 @@ from .models import Character, Quality, CharacterQuality, Gear, CharacterGear
 from .forms import (
     CharacterBasicInfoForm, CharacterRoleHistoryForm, CharacterPrioritiesForm,
     CharacterQualitySelectionForm, CharacterAttributesForm, CharacterKarmaForm,
-    CharacterGearSelectionForm, CharacterFinishingForm
+    CharacterGearSelectionForm, CharacterFinishingForm, NPCGeneratorForm
 )
+from .npc_generator import generate_npc_data, ARCHETYPE_TEMPLATES, THREAT_LEVELS
 
 logger = logging.getLogger(__name__)
 
 
 @login_required
 def character_list(request):
-    """List all characters for the current user"""
+    """List all characters for the current user, separated into PCs and NPCs"""
     try:
-        characters = Character.objects.filter(user=request.user)
-        context = {'characters': characters}
+        # Separate player characters and NPCs
+        player_characters = Character.objects.filter(user=request.user, is_npc=False)
+        npcs = Character.objects.filter(user=request.user, is_npc=True)
+
+        context = {
+            'player_characters': player_characters,
+            'npcs': npcs,
+            'total_characters': player_characters.count() + npcs.count()
+        }
         logger.info(f"User {request.user.username} accessed character list")
         return render(request, 'characters/list.html', context)
     except Exception as e:
@@ -319,3 +327,71 @@ def character_delete(request, pk):
 
     context = {'character': character}
     return render(request, 'characters/delete_confirm.html', context)
+
+
+@login_required
+def npc_generator(request):
+    """Generate random NPCs based on parameters"""
+    generated_npcs = []
+
+    if request.method == 'POST':
+        form = NPCGeneratorForm(request.POST)
+
+        if form.is_valid():
+            try:
+                # Get form data
+                archetype = form.cleaned_data['archetype']
+                threat_level = form.cleaned_data['threat_level']
+                race = form.cleaned_data.get('race') or None
+                use_alias = form.cleaned_data.get('use_alias', True)
+                quantity = form.cleaned_data.get('quantity', 1)
+
+                # Generate NPCs
+                for i in range(quantity):
+                    npc_data = generate_npc_data(
+                        archetype_key=archetype,
+                        threat_level=threat_level,
+                        race=race if race else None,
+                        use_alias=use_alias
+                    )
+
+                    # Create NPC character
+                    with transaction.atomic():
+                        # Add is_npc flag to mark this as an NPC
+                        npc_data['is_npc'] = True
+                        npc = Character.objects.create(
+                            user=request.user,
+                            **npc_data
+                        )
+                        generated_npcs.append(npc)
+
+                # Success message
+                if quantity == 1:
+                    messages.success(
+                        request,
+                        f'Successfully generated NPC: {generated_npcs[0].name}!'
+                    )
+                    return redirect('characters:detail', pk=generated_npcs[0].pk)
+                else:
+                    messages.success(
+                        request,
+                        f'Successfully generated {quantity} NPCs!'
+                    )
+                    # Stay on page to show all generated NPCs
+
+            except Exception as e:
+                logger.error(f"Error generating NPC: {str(e)}", exc_info=True)
+                messages.error(request, f'Error generating NPC: {str(e)}')
+                form = NPCGeneratorForm()  # Reset form
+
+    else:
+        form = NPCGeneratorForm()
+
+    context = {
+        'form': form,
+        'generated_npcs': generated_npcs,
+        'archetype_templates': ARCHETYPE_TEMPLATES,
+        'threat_levels': THREAT_LEVELS,
+    }
+
+    return render(request, 'characters/npc_generator.html', context)

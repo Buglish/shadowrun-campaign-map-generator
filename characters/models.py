@@ -127,6 +127,7 @@ class Character(models.Model):
     # Character Status
     is_complete = models.BooleanField(default=False, help_text="Character creation completed")
     creation_step = models.IntegerField(default=1, help_text="Current step in character creation")
+    is_npc = models.BooleanField(default=False, help_text="Is this character an NPC (generated)")
 
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

@@ -87,8 +87,8 @@ class SessionForm(forms.ModelForm):
             'session_number', 'title', 'description', 'scheduled_date',
             'actual_date', 'duration_minutes', 'status', 'gm_notes',
             'session_notes', 'player_summary', 'maps_used', 'characters_present',
-            'karma_awarded', 'nuyen_awarded', 'encounters_faced', 'enemies_defeated',
-            'objectives_completed', 'important_npcs', 'loot_acquired'
+            'npcs_involved', 'karma_awarded', 'nuyen_awarded', 'encounters_faced',
+            'enemies_defeated', 'objectives_completed', 'important_npcs', 'loot_acquired'
         ]
         widgets = {
             'session_number': forms.NumberInput(attrs={
@@ -141,6 +141,10 @@ class SessionForm(forms.ModelForm):
                 'class': 'form-select',
                 'size': '4'
             }),
+            'npcs_involved': forms.SelectMultiple(attrs={
+                'class': 'form-select',
+                'size': '4'
+            }),
             'karma_awarded': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '0'
@@ -179,10 +183,19 @@ class SessionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if campaign:
-            # Filter characters to only show campaign characters
-            self.fields['characters_present'].queryset = campaign.characters.all()
-            # Filter maps to only show campaign maps
-            self.fields['maps_used'].queryset = campaign.maps.all()
+            # Filter player characters (not NPCs) from campaign characters
+            self.fields['characters_present'].queryset = campaign.characters.filter(is_npc=False)
+
+            # Filter NPCs from all NPCs owned by the GM
+            # This allows selecting any NPC, not just campaign-assigned ones
+            self.fields['npcs_involved'].queryset = Character.objects.filter(
+                user=campaign.game_master,
+                is_npc=True
+            )
+
+            # Filter maps to show all maps owned by the GM (campaign owner)
+            # This allows selecting maps even if they're not yet assigned to the campaign
+            self.fields['maps_used'].queryset = Map.objects.filter(owner=campaign.game_master)
 
             # Auto-suggest next session number
             if not self.instance.pk:

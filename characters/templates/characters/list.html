@@ -5,46 +5,103 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>My Characters</h1>
-    <a href="{% url 'characters:create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Create New Character
-    </a>
+    <div>
+        <a href="{% url 'characters:npc_generator' %}" class="btn btn-success me-2">
+            <i class="bi bi-magic"></i> Generate NPC
+        </a>
+        <a href="{% url 'characters:create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Character
+        </a>
+    </div>
 </div>
 
-{% if characters %}
-    <div class="row">
-        {% for character in characters %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100 {% if not character.is_complete %}border-warning{% endif %}">
-                <div class="card-body">
-                    <h5 class="card-title">{{ character.name }}</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">
-                        {{ character.get_race_display }} {{ character.get_archetype_display }}
-                    </h6>
+<!-- Player Characters Section -->
+<div class="mb-5">
+    <h2 class="mb-3">
+        <i class="bi bi-person-fill"></i> Player Characters
+        <span class="badge bg-primary">{{ player_characters.count }}</span>
+    </h2>
 
-                    {% if not character.is_complete %}
-                        <div class="alert alert-warning alert-sm mb-2">
-                            <small>In Progress (Step {{ character.creation_step }}/8)</small>
-                        </div>
-                    {% endif %}
+    {% if player_characters %}
+        <div class="row">
+            {% for character in player_characters %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 {% if not character.is_complete %}border-warning{% endif %}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ character.name }}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            {{ character.get_race_display }} {{ character.get_archetype_display }}
+                        </h6>
 
-                    <p class="card-text">
-                        <strong>Role:</strong> {{ character.get_role_display }}<br>
-                        <strong>Created:</strong> {{ character.created_at|date:"M d, Y" }}
-                    </p>
-                </div>
-                <div class="card-footer bg-transparent">
-                    <a href="{% url 'characters:detail' character.pk %}" class="btn btn-sm btn-outline-primary">View</a>
-                    <a href="{% url 'characters:edit' character.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                    <a href="{% url 'characters:delete' character.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        {% if not character.is_complete %}
+                            <div class="alert alert-warning alert-sm mb-2">
+                                <small>In Progress (Step {{ character.creation_step }}/8)</small>
+                            </div>
+                        {% endif %}
+
+                        <p class="card-text">
+                            <strong>Role:</strong> {{ character.get_role_display }}<br>
+                            <strong>Created:</strong> {{ character.created_at|date:"M d, Y" }}
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="{% url 'characters:detail' character.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                        <a href="{% url 'characters:edit' character.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a href="{% url 'characters:delete' character.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert alert-info">
-        <h4>No Characters Yet</h4>
-        <p>You haven't created any characters yet. Click the button above to create your first Shadowrun character!</p>
-    </div>
-{% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            <h5>No Player Characters Yet</h5>
+            <p>You haven't created any player characters yet. Click "Create New Character" above to create your first Shadowrun character!</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- NPCs Section -->
+<div class="mb-5">
+    <h2 class="mb-3">
+        <i class="bi bi-people-fill"></i> NPCs (Generated)
+        <span class="badge bg-success">{{ npcs.count }}</span>
+    </h2>
+
+    {% if npcs %}
+        <div class="row">
+            {% for character in npcs %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 border-success">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            {{ character.name }}
+                            <span class="badge bg-success badge-sm ms-2">NPC</span>
+                        </h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            {{ character.get_race_display }} {{ character.get_archetype_display }}
+                        </h6>
+
+                        <p class="card-text small">
+                            <strong>Role:</strong> {{ character.get_role_display }}<br>
+                            <strong>Created:</strong> {{ character.created_at|date:"M d, Y" }}<br>
+                            <strong>Age:</strong> {{ character.age }} | <strong>Sex:</strong> {{ character.sex }}
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="{% url 'characters:detail' character.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                        <a href="{% url 'characters:edit' character.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a href="{% url 'characters:delete' character.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <h5>No NPCs Generated Yet</h5>
+            <p>You haven't generated any NPCs yet. Click "Generate NPC" above to quickly create NPCs for your campaign!</p>
+        </div>
+    {% endif %}
+</div>
 {% endblock %}

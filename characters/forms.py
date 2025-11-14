@@ -1,5 +1,6 @@
 from django import forms
 from .models import Character, Quality, CharacterQuality, Gear, CharacterGear
+from .npc_generator import get_archetype_choices, get_threat_level_choices, ARCHETYPE_TEMPLATES, THREAT_LEVELS
 
 
 class CharacterBasicInfoForm(forms.ModelForm):
@@ -185,3 +186,72 @@ class CharacterFinishingForm(forms.ModelForm):
             'current_resources': 'Current nuyen (after gear purchases)',
             'essence': 'Character essence (reduced by cyberware)',
         }
+
+
+class NPCGeneratorForm(forms.Form):
+    """Form for generating random NPCs"""
+
+    RACE_CHOICES = [
+        ('', '-- Random Race --'),
+        ('human', 'Human'),
+        ('dwarf', 'Dwarf'),
+        ('elf', 'Elf'),
+        ('ork', 'Ork'),
+        ('troll', 'Troll'),
+    ]
+
+    archetype = forms.ChoiceField(
+        choices=get_archetype_choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Archetype',
+        help_text='Select the NPC archetype/profession'
+    )
+
+    threat_level = forms.ChoiceField(
+        choices=get_threat_level_choices,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Threat Level',
+        help_text='Determines NPC power level and competence'
+    )
+
+    race = forms.ChoiceField(
+        choices=RACE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Race',
+        help_text='Leave blank for random race selection'
+    )
+
+    use_alias = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Use Shadowrun Alias',
+        help_text='Generate name with street alias (e.g., "Ghost" Jake Reyes)'
+    )
+
+    quantity = forms.IntegerField(
+        min_value=1,
+        max_value=20,
+        initial=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 20}),
+        label='Quantity',
+        help_text='Number of NPCs to generate (1-20)'
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add descriptions to threat level choices as HTML data attributes
+        for field_name in ['archetype', 'threat_level']:
+            self.fields[field_name].widget.attrs['class'] = 'form-select'
+
+    def get_archetype_description(self, archetype_key):
+        """Get description for selected archetype"""
+        template = ARCHETYPE_TEMPLATES.get(archetype_key, {})
+        skills = ', '.join(template.get('typical_skills', [])[:4])
+        return f"Primary skills: {skills}"
+
+    def get_threat_description(self, threat_key):
+        """Get description for selected threat level"""
+        threat = THREAT_LEVELS.get(threat_key, {})
+        return threat.get('description', '')

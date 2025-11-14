@@ -168,7 +168,15 @@ class Session(models.Model):
         Character,
         related_name='sessions_attended',
         blank=True,
-        help_text="Characters who participated in this session"
+        limit_choices_to={'is_npc': False},
+        help_text="Player characters who participated in this session"
+    )
+    npcs_involved = models.ManyToManyField(
+        Character,
+        related_name='sessions_involved',
+        blank=True,
+        limit_choices_to={'is_npc': True},
+        help_text="NPCs encountered or involved in this session"
     )
 
     # Rewards

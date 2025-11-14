@@ -81,13 +81,28 @@
 
             <!-- Session Content -->
             <h5 class="mb-3 mt-4">Session Content</h5>
-            <div class="mb-3">
-                <label for="{{ form.characters_present.id_for_label }}" class="form-label">Characters Present</label>
-                {{ form.characters_present }}
-                <small class="form-text text-muted">Hold Ctrl (Cmd on Mac) to select multiple</small>
-                {% if form.characters_present.errors %}
-                    <div class="text-danger small">{{ form.characters_present.errors }}</div>
-                {% endif %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.characters_present.id_for_label }}" class="form-label">
+                        <i class="bi bi-person-fill text-primary"></i> Player Characters Present
+                    </label>
+                    {{ form.characters_present }}
+                    <small class="form-text text-muted">Player characters who participated (earn rewards)</small>
+                    {% if form.characters_present.errors %}
+                        <div class="text-danger small">{{ form.characters_present.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.npcs_involved.id_for_label }}" class="form-label">
+                        <i class="bi bi-people-fill text-success"></i> NPCs Involved
+                    </label>
+                    {{ form.npcs_involved }}
+                    <small class="form-text text-muted">NPCs encountered or involved in session</small>
+                    {% if form.npcs_involved.errors %}
+                        <div class="text-danger small">{{ form.npcs_involved.errors }}</div>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="mb-3">

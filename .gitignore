@@ -19,7 +19,8 @@ django_venv/
 
 # Django
 *.log
-logs/
+logs/*.log
+logs/*.log.*
 db.sqlite3
 db.sqlite3-journal
 media/

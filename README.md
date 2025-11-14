@@ -12,16 +12,26 @@ This application aims to provide a comprehensive platform for Shadowrun campaign
 - **User Authentication**: Secure login and registration system
 - **Character Registration**: Create and register Shadowrun characters
 - **Character Management**: View, edit, and manage character details including:
-  - Attributes and skills
+  - Attributes and skills with 9 skill categories
   - Equipment and gear
   - Cyberware and bioware
+  - Spells, adept powers, and complex forms
+  - Character contacts with connection and loyalty ratings
   - Character background and notes
+- **Dice Rolling System**: Integrated Shadowrun 5e dice mechanics
+  - Pool-based D6 rolling with hit calculation
+  - Rule of Six (exploding 6s) and glitch detection
+  - Dice presets for quick common rolls
+  - Roll history tracking
+  - Character-specific preset management
 
 ### Game Master Features
 - **Map Builder**: Interactive visual interface to create and edit custom campaign maps
   - Grid-based map editor with tile painting tools
   - Support for multiple terrain types (urban, wilderness, corporate, underground, mixed)
-  - Place and manage map objects (NPCs, enemies, items, markers, etc.)
+  - Token/object placement system with 9 object types (NPCs, enemies, items, objectives, traps, entrances, cover, vehicles, markers)
+  - X/Y coordinate positioning with custom icons and colors
+  - Visibility controls for player vs GM-only objects
   - Visual map display with color-coded tiles
 - **Dynamic Map Generation**: Procedurally generate maps using advanced algorithms
   - **5 Generation Algorithms**:
@@ -35,6 +45,16 @@ This application aims to provide a comprehensive platform for Shadowrun campaign
   - Seed-based generation for reproducible maps
   - Generation presets for quick map creation
 - **Map Sharing**: Share maps with specific players or make them public
+- **NPC Generator**: Procedurally generate NPCs with complete stats and backgrounds
+  - **22 archetype templates** including:
+    - **Runner Archetypes**: Street Samurai, Combat Mage, Decker, Face, Adept, Rigger, Street Shaman, Technomancer, Weapon Specialist, Covert Ops
+    - **Civilian/Vendor Archetypes**: Gun Vendor, Clothing Vendor, Melee Vendor, Drug Dealer, Pawn Shop Vendor, Food Vendor, Street Performer, Companion, Street Doc (Ripper Doc), Security Guard, Thug, Thief
+  - 4 threat levels (Low, Medium, High, Extreme) for scaling difficulty
+  - Randomized attributes, skills, and equipment based on archetype
+  - Procedural name generation with Shadowrun street aliases
+  - Automatic physical descriptions and background stories tailored to archetype
+  - Bulk generation support (create up to 20 NPCs at once)
+  - Separate NPC management from player characters
 - **Campaign Management**: Organize and manage multiple campaigns with comprehensive session tracking
 
 ## Technology Stack
@@ -84,6 +104,8 @@ venv/bin/pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your settings (especially database configuration)
 ```
+
+**Note:** The `logs/` directory is already included in the repository and will be created automatically when you clone. Log files are automatically generated when the application runs.
 
 Now choose your database path:
 
@@ -300,6 +322,11 @@ dnd-campaign-map-generator/
 │   ├── models.py            # Campaign data models
 │   ├── views.py             # Campaign CRUD views
 │   └── urls.py              # Campaign URLs
+├── dice/                    # Dice rolling system app
+│   ├── models.py            # Dice roll and preset models
+│   ├── views.py             # Dice roller views
+│   ├── utils.py             # Shadowrun 5e dice mechanics
+│   └── urls.py              # Dice roller URLs
 ├── templates/               # HTML templates
 │   ├── base.html            # Base template
 │   └── home.html            # Homepage template
@@ -500,17 +527,73 @@ The campaign system provides comprehensive tools for organizing and running Shad
   - [x] Event logging (objectives, NPCs, loot)
   - [x] Character and map linking to sessions
   - [x] Session objectives system
+- [x] Dice Rolling System:
+  - [x] Pool-based D6 rolling with Shadowrun 5e mechanics
+  - [x] Hit calculation (5s and 6s)
+  - [x] Rule of Six (exploding 6s)
+  - [x] Glitch and Critical Glitch detection
+  - [x] Edge support and optional thresholds
+  - [x] Dice preset management for quick rolls
+  - [x] Roll history tracking
+  - [x] Character-specific dice presets
+  - [x] AJAX-based quick roller interface
+- [x] Enhanced Character Skills System:
+  - [x] 9 skill categories (combat, physical, social, technical, vehicle, magical, resonance, knowledge, language)
+  - [x] Skill ratings (0-12) with specializations
+  - [x] Linked attribute system for dice pool calculation
+  - [x] Automatic dice pool calculation
+  - [x] Full CRUD operations for character skills
+- [x] Magic and Spell Management:
+  - [x] Spell system with 5 categories (combat, detection, health, illusion, manipulation)
+  - [x] Physical/Mana spell types
+  - [x] Range and duration tracking
+  - [x] Drain value calculation
+  - [x] Character spell associations
+  - [x] Complex forms for technomancers
+  - [x] Adept power system with level support
+  - [x] Full admin interface for magical abilities
+- [x] Token/Character Placement on Maps:
+  - [x] MapObject system with X/Y coordinate positioning
+  - [x] 9 object types (NPC, Enemy, Item, Objective, Trap, Entrance, Cover, Vehicle, Marker)
+  - [x] Icon and color customization
+  - [x] Visibility controls for players vs GM
+  - [x] Movement and vision blocking properties
+  - [x] Custom stats storage (JSON)
+- [x] NPC Management with Character Links:
+  - [x] Contact system with character relationships
+  - [x] Contact archetypes and descriptions
+  - [x] Connection rating (1-12) and loyalty rating (1-6)
+  - [x] Notes and relationship tracking
+  - [x] Full admin interface for contact management
+- [x] NPC Generator (Procedural Generation):
+  - [x] 22 archetype templates including:
+    - [x] 10 Runner archetypes (Street Samurai, Combat Mage, Decker, Face, Adept, Rigger, Street Shaman, Technomancer, Weapon Specialist, Covert Ops)
+    - [x] 12 Civilian/Vendor archetypes (Gun Vendor, Clothing Vendor, Melee Vendor, Drug Dealer, Pawn Shop Vendor, Food Vendor, Street Performer, Companion, Street Doc, Security Guard, Thug, Thief)
+  - [x] 4 threat levels (Low, Medium, High, Extreme) with scaling attributes and resources
+  - [x] Randomized attributes based on archetype priorities
+  - [x] Procedural name generation with Shadowrun aliases
+  - [x] Random physical descriptions and backgrounds tailored to archetype type
+  - [x] Different background generation for runners vs civilians/vendors
+  - [x] Automatic skill allocation based on archetype
+  - [x] Bulk generation (1-20 NPCs at once)
+  - [x] Separate NPC list from player characters
+  - [x] Full integration with character management system
+
+### In Progress
+- [ ] Combat tracker (basic session metrics implemented, real-time tracker needed)
+- [ ] Grid measurement and distance tools (infrastructure present, UI tools needed)
+- [ ] Map layers and fog of war (basic visibility flags implemented, full layer system needed)
 
 ### Planned
 - [ ] Real-time collaborative map editing
-- [ ] Dice rolling integration
-- [ ] Combat tracker
-- [ ] NPC management with character links
-- [ ] Enhanced character skills system
-- [ ] Magic and spell management
-- [ ] Map layers and fog of war
-- [ ] Token/character placement on maps
-- [ ] Grid measurement and distance tools
+- [ ] Initiative tracker for combat
+- [ ] Advanced pathfinding and distance calculation tools
+- [ ] Dynamic fog of war reveal system
+- [ ] Multi-layer map support (ground, objects, lighting, fog)
+- [ ] Map annotations and drawing tools
+- [ ] Import/export maps in common formats
+- [ ] Character portrait and token management
+- [ ] Advanced search and filtering for characters/campaigns
 
 ## Contributing
 

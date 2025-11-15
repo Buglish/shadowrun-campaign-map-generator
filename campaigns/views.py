@@ -583,3 +583,96 @@ def combat_log_view(request, campaign_pk, session_pk, encounter_pk):
         'is_gm': campaign.game_master == request.user,
     }
     return render(request, 'campaigns/combat_log.html', context)
+
+
+@login_required
+def combat_effect_add(request, campaign_pk, session_pk, encounter_pk, participant_pk):
+    """Add a status effect to a combat participant (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    campaign = get_object_or_404(Campaign, pk=campaign_pk)
+    participant = get_object_or_404(CombatParticipant, pk=participant_pk)
+    encounter = participant.encounter
+
+    # Only GM can add effects
+    if campaign.game_master != request.user:
+        return JsonResponse({'success': False, 'error': 'Only GM can add effects'})
+
+    try:
+        # Get effect data from POST
+        name = request.POST.get('name', '').strip()
+        effect_type = request.POST.get('effect_type', 'condition')
+        description = request.POST.get('description', '').strip()
+        duration_rounds = int(request.POST.get('duration_rounds', 1))
+
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Effect name is required'})
+
+        # Create the effect
+        effect = CombatEffect.objects.create(
+            participant=participant,
+            name=name,
+            effect_type=effect_type,
+            description=description,
+            duration_rounds=duration_rounds,
+            rounds_remaining=duration_rounds,
+            is_active=True
+        )
+
+        # Log the effect application
+        CombatLog.log_event(
+            encounter=encounter,
+            event_type='effect_applied',
+            description=f'{name} applied to {participant.name} for {duration_rounds} rounds',
+            target=participant,
+            data={'effect_name': name, 'effect_type': effect_type, 'duration': duration_rounds}
+        )
+
+        return JsonResponse({
+            'success': True,
+            'effect': {
+                'id': effect.id,
+                'name': effect.name,
+                'effect_type': effect.effect_type,
+                'rounds_remaining': effect.rounds_remaining,
+                'description': effect.description
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def combat_effect_remove(request, campaign_pk, session_pk, encounter_pk, effect_pk):
+    """Remove/deactivate a status effect (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    campaign = get_object_or_404(Campaign, pk=campaign_pk)
+    effect = get_object_or_404(CombatEffect, pk=effect_pk)
+    participant = effect.participant
+    encounter = participant.encounter
+
+    # Only GM can remove effects
+    if campaign.game_master != request.user:
+        return JsonResponse({'success': False, 'error': 'Only GM can remove effects'})
+
+    try:
+        # Deactivate the effect
+        effect.is_active = False
+        effect.rounds_remaining = 0
+        effect.save()
+
+        # Log the effect removal
+        CombatLog.log_event(
+            encounter=encounter,
+            event_type='effect_expired',
+            description=f'{effect.name} removed from {participant.name}',
+            target=participant,
+            data={'effect_name': effect.name, 'manually_removed': True}
+        )
+
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

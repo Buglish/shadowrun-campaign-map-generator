@@ -609,9 +609,40 @@ The campaign system provides comprehensive tools for organizing and running Shad
   - [x] Combat statistics and duration tracking
   - [x] Full admin interface for log management
 
+- [x] Combat Effects System:
+  - [x] Apply status effects to combat participants (buffs, debuffs, DoT, HoT, conditions)
+  - [x] 5 effect types with visual color coding
+  - [x] Duration tracking with automatic countdown per round
+  - [x] Modal UI for adding effects with name, type, description, duration
+  - [x] One-click effect removal
+  - [x] Automatic effect expiration and logging
+  - [x] Visual effect badges on participant cards
+  - [x] Integration with combat log
+  - [x] Full admin interface for effect management
+
 ### In Progress
 
 ### Planned
+
+#### High Priority Features
+- [ ] Session Objectives Management - Create and track specific session goals with completion status
+- [ ] Map Objects/Tokens System - Place and manage interactive objects (NPCs, enemies, items) on maps
+- [ ] Character Magic Systems UI:
+  - [ ] Spell management for mages and shamans
+  - [ ] Adept power management for adepts
+  - [ ] Complex form management for technomancers
+- [ ] Character Skills Management - Add, edit, and manage character skills through UI
+- [ ] Map Sharing Controls - UI to share maps with specific users
+
+#### Medium Priority Features
+- [ ] Character Contacts Management - Add and track contacts with connection/loyalty ratings
+- [ ] Character Languages System - Manage character languages and proficiency levels
+- [ ] Map Generation Presets - Save and load favorite map generation configurations
+- [ ] Fog of War System - Hide and reveal map tiles for players
+- [ ] Map Deletion UI - Delete maps through the interface
+- [ ] Character Sheet Advanced View - Comprehensive character sheet with all calculated stats
+
+#### Future Enhancements
 - [ ] Real-time collaborative map editing
 - [ ] Advanced pathfinding with terrain cost calculation
 - [ ] Multi-layer map support (ground, objects, lighting layers)

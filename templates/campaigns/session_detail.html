@@ -24,6 +24,9 @@
     </div>
     {% if is_gm %}
         <div class="col text-end">
+            <a href="{% url 'campaigns:combat_create' campaign.pk session.pk %}" class="btn btn-success">
+                <i class="bi bi-lightning"></i> Create Combat Encounter
+            </a>
             <a href="{% url 'campaigns:session_edit' campaign.pk session.pk %}" class="btn btn-outline-primary">
                 <i class="bi bi-pencil"></i> Edit
             </a>
@@ -242,6 +245,57 @@
                     </div>
                 {% endfor %}
             </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Combat Encounters -->
+{% if session.combat_encounters.all %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-lightning"></i> Combat Encounters</h5>
+        </div>
+        <div class="card-body">
+            <div class="list-group">
+                {% for encounter in session.combat_encounters.all %}
+                    <a href="{% url 'campaigns:combat_detail' campaign.pk session.pk encounter.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ encounter.name }}</h6>
+                                <p class="mb-1 text-muted small">{{ encounter.description|truncatewords:15 }}</p>
+                                <small class="text-muted">
+                                    Round {{ encounter.current_round }} | {{ encounter.participant_count }} participants
+                                </small>
+                            </div>
+                            <div>
+                                <span class="badge
+                                    {% if encounter.status == 'active' %}bg-success
+                                    {% elif encounter.status == 'completed' %}bg-secondary
+                                    {% elif encounter.status == 'setup' %}bg-warning text-dark
+                                    {% else %}bg-info{% endif %}">
+                                    {{ encounter.get_status_display }}
+                                </span>
+                                {% if encounter.status == 'completed' %}
+                                    <a href="{% url 'campaigns:combat_log' campaign.pk session.pk encounter.pk %}" class="btn btn-sm btn-outline-info ms-2">
+                                        <i class="bi bi-journal-text"></i> View Log
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% elif is_gm %}
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-body text-center">
+            <i class="bi bi-lightning" style="font-size: 3rem; color: #0d6efd;"></i>
+            <h5 class="mt-3">No Combat Encounters Yet</h5>
+            <p class="text-muted">Create a combat encounter to track initiative, HP, and combat actions.</p>
+            <a href="{% url 'campaigns:combat_create' campaign.pk session.pk %}" class="btn btn-primary">
+                <i class="bi bi-lightning"></i> Create First Combat Encounter
+            </a>
         </div>
     </div>
 {% endif %}

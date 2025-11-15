@@ -48,7 +48,10 @@
                             <a class="nav-link" href="{% url 'accounts:profile' %}">{{ user.username }}</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'accounts:logout' %}">Logout</a>
+                            <form method="post" action="{% url 'accounts:logout' %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="nav-link btn btn-link" style="border: none; background: none; padding: 0.5rem 1rem; text-decoration: none; cursor: pointer;">Logout</button>
+                            </form>
                         </li>
                     {% else %}
                         <li class="nav-item">

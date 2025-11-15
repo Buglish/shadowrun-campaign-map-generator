@@ -252,26 +252,35 @@
                                 <button class="btn btn-sm btn-success damage-btn" onclick="applyDamage({{ participant.id }}, 5, 'physical')" title="Heal 5 HP">
                                     +5
                                 </button>
+                                <button class="btn btn-sm btn-info damage-btn" onclick="showAddEffectModal({{ participant.id }}, '{{ participant.name }}')" title="Add Status Effect">
+                                    <i class="bi bi-stars"></i>
+                                </button>
                             </div>
                         </div>
                         {% endif %}
                     </div>
 
                     <!-- Effects -->
-                    {% if participant.effects.all %}
-                    <div class="row mt-2">
+                    <div class="row mt-2" id="effects-{{ participant.id }}">
                         <div class="col-12">
                             <small class="text-muted">Effects:</small>
                             {% for effect in participant.effects.all %}
                                 {% if effect.is_active %}
-                                <span class="badge bg-{% if effect.effect_type == 'buff' %}success{% elif effect.effect_type == 'debuff' %}danger{% else %}secondary{% endif %}">
+                                <span class="badge bg-{% if effect.effect_type == 'buff' %}success{% elif effect.effect_type == 'debuff' %}danger{% elif effect.effect_type == 'healing' %}info{% elif effect.effect_type == 'damage' %}warning text-dark{% else %}secondary{% endif %}"
+                                      id="effect-{{ effect.id }}"
+                                      title="{{ effect.description }}">
                                     {{ effect.name }} ({{ effect.rounds_remaining }}r)
+                                    {% if is_gm %}
+                                    <i class="bi bi-x-circle" style="cursor: pointer;" onclick="removeEffect({{ effect.id }}, {{ participant.id }})"></i>
+                                    {% endif %}
                                 </span>
                                 {% endif %}
                             {% endfor %}
+                            {% if not participant.effects.all %}
+                                <span class="text-muted fst-italic">No active effects</span>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
                 </div>
                 {% empty %}
                 <div class="alert alert-info">
@@ -300,6 +309,53 @@
                 <a href="{% url 'campaigns:combat_participant_add' campaign.pk session.pk encounter.pk %}" class="btn btn-primary">
                     <i class="bi bi-person-plus"></i> Add Participant
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Effect Modal (GM Only) -->
+<div class="modal fade" id="addEffectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Status Effect to <span id="effectTargetName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addEffectForm">
+                    <input type="hidden" id="effectParticipantId">
+
+                    <div class="mb-3">
+                        <label for="effectName" class="form-label">Effect Name *</label>
+                        <input type="text" class="form-control" id="effectName" required placeholder="e.g., Poisoned, Blessed, Stunned">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="effectType" class="form-label">Effect Type</label>
+                        <select class="form-select" id="effectType">
+                            <option value="buff">Buff (Positive)</option>
+                            <option value="debuff">Debuff (Negative)</option>
+                            <option value="damage">Damage Over Time</option>
+                            <option value="healing">Healing Over Time</option>
+                            <option value="condition" selected>Condition/Status</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="effectDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="effectDescription" rows="2" placeholder="Brief description of the effect"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="effectDuration" class="form-label">Duration (Rounds)</label>
+                        <input type="number" class="form-control" id="effectDuration" min="1" value="3">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addEffect()">Add Effect</button>
             </div>
         </div>
     </div>
@@ -445,6 +501,86 @@
             } else {
                 alert('Error: ' + data.error);
             }
+        });
+    }
+
+    function showAddEffectModal(participantId, participantName) {
+        document.getElementById('effectParticipantId').value = participantId;
+        document.getElementById('effectTargetName').textContent = participantName;
+
+        // Reset form
+        document.getElementById('addEffectForm').reset();
+        document.getElementById('effectDuration').value = 3;
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('addEffectModal'));
+        modal.show();
+    }
+
+    function addEffect() {
+        const participantId = document.getElementById('effectParticipantId').value;
+        const name = document.getElementById('effectName').value.trim();
+        const effectType = document.getElementById('effectType').value;
+        const description = document.getElementById('effectDescription').value.trim();
+        const duration = document.getElementById('effectDuration').value;
+
+        if (!name) {
+            alert('Effect name is required');
+            return;
+        }
+
+        fetch(`/campaigns/{{ campaign.pk }}/sessions/{{ session.pk }}/combat/{{ encounter.pk }}/participant/${participantId}/effect/add/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `name=${encodeURIComponent(name)}&effect_type=${effectType}&description=${encodeURIComponent(description)}&duration_rounds=${duration}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Hide modal
+                bootstrap.Modal.getInstance(document.getElementById('addEffectModal')).hide();
+
+                // Reload to show new effect
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to add effect');
+        });
+    }
+
+    function removeEffect(effectId, participantId) {
+        if (!confirm('Remove this effect?')) return;
+
+        fetch(`/campaigns/{{ campaign.pk }}/sessions/{{ session.pk }}/combat/{{ encounter.pk }}/effect/${effectId}/remove/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove effect badge from UI
+                const effectBadge = document.getElementById(`effect-${effectId}`);
+                if (effectBadge) {
+                    effectBadge.remove();
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to remove effect');
         });
     }
 </script>

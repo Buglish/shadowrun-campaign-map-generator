@@ -28,4 +28,8 @@ urlpatterns = [
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/participant/<int:participant_pk>/update-hp/', views.combat_update_hp, name='combat_update_hp'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/start/', views.combat_start, name='combat_start'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/end/', views.combat_end, name='combat_end'),
+
+    # Combat Effects endpoints
+    path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/participant/<int:participant_pk>/effect/add/', views.combat_effect_add, name='combat_effect_add'),
+    path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/effect/<int:effect_pk>/remove/', views.combat_effect_remove, name='combat_effect_remove'),
 ]

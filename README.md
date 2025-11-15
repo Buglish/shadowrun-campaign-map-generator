@@ -579,21 +579,47 @@ The campaign system provides comprehensive tools for organizing and running Shad
   - [x] Separate NPC list from player characters
   - [x] Full integration with character management system
 
+- [x] Real-time Combat Tracker:
+  - [x] Combat encounter management with round/turn tracking
+  - [x] Participant tracking with initiative order
+  - [x] HP and damage tracking (physical/stun for Shadowrun)
+  - [x] Status effects and condition monitoring
+  - [x] Real-time AJAX updates for combat flow
+  - [x] Automatic session statistics updates
+- [x] Grid Measurement and Distance Tools:
+  - [x] Distance measurement tool with Euclidean and Manhattan calculations
+  - [x] Visual path highlighting between tiles
+  - [x] Line-of-sight calculation using Bresenham's algorithm
+  - [x] Mode-based UI (paint, measure, fog of war)
+- [x] Fog of War System:
+  - [x] Toggle fog of war per map
+  - [x] Reveal/hide tiles with configurable radius
+  - [x] Persistent revealed tile tracking
+  - [x] Visual fog overlay for hidden tiles
+  - [x] GM controls for fog management
+
+- [x] Combat Log and History Tracking:
+  - [x] Comprehensive event logging for all combat actions
+  - [x] Automatic logging of combat start/end, rounds, turns
+  - [x] Damage and healing event tracking
+  - [x] Effect application and expiration tracking
+  - [x] Participant defeat tracking
+  - [x] Organized log view grouped by combat round
+  - [x] Visual log interface with event type highlighting
+  - [x] Combat statistics and duration tracking
+  - [x] Full admin interface for log management
+
 ### In Progress
-- [ ] Combat tracker (basic session metrics implemented, real-time tracker needed)
-- [ ] Grid measurement and distance tools (infrastructure present, UI tools needed)
-- [ ] Map layers and fog of war (basic visibility flags implemented, full layer system needed)
 
 ### Planned
 - [ ] Real-time collaborative map editing
-- [ ] Initiative tracker for combat
-- [ ] Advanced pathfinding and distance calculation tools
-- [ ] Dynamic fog of war reveal system
-- [ ] Multi-layer map support (ground, objects, lighting, fog)
-- [ ] Map annotations and drawing tools
-- [ ] Import/export maps in common formats
+- [ ] Advanced pathfinding with terrain cost calculation
+- [ ] Multi-layer map support (ground, objects, lighting layers)
+- [ ] Map annotations and drawing tools (freehand, shapes, text)
+- [ ] Import/export maps in common formats (JSON, image)
 - [ ] Character portrait and token management
 - [ ] Advanced search and filtering for characters/campaigns
+- [ ] Automated combat AI for NPCs
 
 ## Contributing
 

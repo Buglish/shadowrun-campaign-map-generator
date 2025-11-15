@@ -86,6 +86,37 @@
         vertical-align: middle;
         margin-right: 5px;
     }
+
+    .map-tile.measure-start {
+        border: 3px solid #00ff00 !important;
+        box-shadow: 0 0 10px #00ff00;
+    }
+
+    .map-tile.measure-end {
+        border: 3px solid #ff0000 !important;
+        box-shadow: 0 0 10px #ff0000;
+    }
+
+    .map-tile.measure-path {
+        background-color: rgba(255, 255, 0, 0.3) !important;
+    }
+
+    .map-tile.fog-hidden {
+        background-color: #000 !important;
+        filter: brightness(0.3);
+        position: relative;
+    }
+
+    .map-tile.fog-hidden::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+    }
 </style>
 {% endblock %}
 
@@ -175,6 +206,66 @@
 
                     <div class="alert alert-info small">
                         <strong>Tip:</strong> Click on tiles to paint, or click and drag to paint multiple tiles at once. Changes are saved automatically.
+                    </div>
+
+                    <hr>
+
+                    <h6>Grid Tools</h6>
+                    <div class="btn-group-vertical w-100 mb-2" role="group">
+                        <button type="button" class="btn btn-outline-primary" id="paintModeBtn" onclick="setMode('paint')">
+                            <i class="bi bi-brush"></i> Paint Mode
+                        </button>
+                        <button type="button" class="btn btn-outline-info" id="measureModeBtn" onclick="setMode('measure')">
+                            <i class="bi bi-rulers"></i> Measure Distance
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="fogModeBtn" onclick="setMode('fog')">
+                            <i class="bi bi-cloud-fog"></i> Fog of War
+                        </button>
+                    </div>
+
+                    <div id="measureInfo" class="alert alert-secondary small" style="display: none;">
+                        <strong>Measure Mode:</strong><br>
+                        Click on a starting tile, then click on an ending tile to measure distance.
+                        <div id="distanceDisplay" class="mt-2" style="display: none;">
+                            <strong>Distance:</strong> <span id="distanceValue">0</span> tiles<br>
+                            <strong>Manhattan:</strong> <span id="manhattanValue">0</span><br>
+                            <strong>Coordinates:</strong><br>
+                            From: <span id="startCoords">-</span><br>
+                            To: <span id="endCoords">-</span>
+                        </div>
+                        <button class="btn btn-sm btn-secondary mt-2" onclick="clearMeasurement()">Clear</button>
+                    </div>
+
+                    <div id="fogInfo" class="alert alert-secondary small" style="display: none;">
+                        <strong>Fog of War Mode:</strong><br>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="fogToggle"
+                                   {% if map.fog_of_war_enabled %}checked{% endif %}
+                                   onchange="toggleFogOfWar()">
+                            <label class="form-check-label" for="fogToggle">
+                                Enable Fog of War
+                            </label>
+                        </div>
+
+                        <div id="fogControls" style="display: {% if map.fog_of_war_enabled %}block{% else %}none{% endif %};">
+                            <label class="small">Reveal Radius:</label>
+                            <select class="form-select form-select-sm mb-2" id="fogRadius">
+                                <option value="1" selected>1 tile</option>
+                                <option value="2">2 tiles</option>
+                                <option value="3">3 tiles</option>
+                                <option value="5">5 tiles</option>
+                            </select>
+
+                            <p class="small">Click tiles to reveal, Shift+Click to hide.</p>
+
+                            <button class="btn btn-sm btn-warning w-100 mb-1" onclick="resetFogOfWar()">
+                                Reset All Fog
+                            </button>
+
+                            <div class="text-muted small">
+                                Revealed: <span id="revealedCount">{{ map.revealed_tiles|length }}</span> tiles
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -350,6 +441,11 @@
     let pendingUpdates = new Map(); // Track tiles that need to be saved
     let saveTimeout = null;
 
+    // Measurement mode
+    let currentMode = 'paint';
+    let measureStart = null;
+    let measureEnd = null;
+
     function paintTile(tileElement) {
         const x = tileElement.dataset.x;
         const y = tileElement.dataset.y;
@@ -416,22 +512,238 @@
         });
     }
 
-    // Tile interaction events
-    document.querySelectorAll('.map-tile').forEach(tile => {
-        // Click to paint single tile
-        tile.addEventListener('click', function() {
-            paintTile(this);
+    // Fog of War state
+    let fogOfWarEnabled = {{ map.fog_of_war_enabled|yesno:"true,false" }};
+    let revealedTiles = {{ map.revealed_tiles|safe }};
+
+    // Mode switching
+    function setMode(mode) {
+        currentMode = mode;
+
+        // Update button states
+        document.getElementById('paintModeBtn').classList.remove('active');
+        document.getElementById('measureModeBtn').classList.remove('active');
+        document.getElementById('fogModeBtn').classList.remove('active');
+        document.getElementById('measureInfo').style.display = 'none';
+        document.getElementById('fogInfo').style.display = 'none';
+
+        if (mode === 'paint') {
+            document.getElementById('paintModeBtn').classList.add('active');
+        } else if (mode === 'measure') {
+            document.getElementById('measureModeBtn').classList.add('active');
+            document.getElementById('measureInfo').style.display = 'block';
+            clearMeasurement();
+        } else if (mode === 'fog') {
+            document.getElementById('fogModeBtn').classList.add('active');
+            document.getElementById('fogInfo').style.display = 'block';
+        }
+    }
+
+    // Distance calculation functions
+    function euclideanDistance(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function manhattanDistance(x1, y1, x2, y2) {
+        return Math.abs(x2 - x1) + Math.abs(y2 - y1);
+    }
+
+    function measureDistance(tile) {
+        const x = parseInt(tile.dataset.x);
+        const y = parseInt(tile.dataset.y);
+
+        if (!measureStart) {
+            // Set starting tile
+            measureStart = { x, y, tile };
+            tile.classList.add('measure-start');
+            document.getElementById('startCoords').textContent = `(${x}, ${y})`;
+        } else if (!measureEnd) {
+            // Set ending tile and calculate distance
+            measureEnd = { x, y, tile };
+            tile.classList.add('measure-end');
+            document.getElementById('endCoords').textContent = `(${x}, ${y})`;
+
+            // Calculate distances
+            const euclidean = euclideanDistance(measureStart.x, measureStart.y, x, y);
+            const manhattan = manhattanDistance(measureStart.x, measureStart.y, x, y);
+
+            // Display results
+            document.getElementById('distanceValue').textContent = euclidean.toFixed(2);
+            document.getElementById('manhattanValue').textContent = manhattan;
+            document.getElementById('distanceDisplay').style.display = 'block';
+
+            // Highlight path (simple line highlighting)
+            highlightPath(measureStart.x, measureStart.y, x, y);
+        } else {
+            // Clear and start new measurement
+            clearMeasurement();
+            measureDistance(tile);
+        }
+    }
+
+    function highlightPath(x1, y1, x2, y2) {
+        // Simple straight line path highlighting using Bresenham's line algorithm
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = x1 < x2 ? 1 : -1;
+        const sy = y1 < y2 ? 1 : -1;
+        let err = dx - dy;
+
+        let x = x1;
+        let y = y1;
+
+        while (true) {
+            // Highlight this tile
+            const tile = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+            if (tile && !tile.classList.contains('measure-start') && !tile.classList.contains('measure-end')) {
+                tile.classList.add('measure-path');
+            }
+
+            if (x === x2 && y === y2) break;
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    function clearMeasurement() {
+        // Remove all measurement highlights
+        document.querySelectorAll('.map-tile').forEach(tile => {
+            tile.classList.remove('measure-start', 'measure-end', 'measure-path');
         });
 
-        // Mouse down starts painting mode
+        measureStart = null;
+        measureEnd = null;
+
+        document.getElementById('distanceDisplay').style.display = 'none';
+        document.getElementById('startCoords').textContent = '-';
+        document.getElementById('endCoords').textContent = '-';
+    }
+
+    // Fog of War functions
+    function toggleFogOfWar() {
+        fetch('{% url "maps:toggle_fog_of_war" map.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fogOfWarEnabled = data.fog_of_war_enabled;
+                document.getElementById('fogControls').style.display = fogOfWarEnabled ? 'block' : 'none';
+                updateFogOfWar();
+            }
+        });
+    }
+
+    function isTileRevealed(x, y) {
+        return revealedTiles.some(tile => tile[0] === x && tile[1] === y);
+    }
+
+    function updateFogOfWar() {
+        if (!fogOfWarEnabled) {
+            // Remove all fog
+            document.querySelectorAll('.map-tile').forEach(tile => {
+                tile.classList.remove('fog-hidden');
+            });
+            return;
+        }
+
+        // Apply fog to all tiles
+        document.querySelectorAll('.map-tile').forEach(tile => {
+            const x = parseInt(tile.dataset.x);
+            const y = parseInt(tile.dataset.y);
+
+            if (isTileRevealed(x, y)) {
+                tile.classList.remove('fog-hidden');
+            } else {
+                tile.classList.add('fog-hidden');
+            }
+        });
+    }
+
+    function handleFogClick(tile, isHiding) {
+        const x = parseInt(tile.dataset.x);
+        const y = parseInt(tile.dataset.y);
+        const radius = parseInt(document.getElementById('fogRadius').value);
+        const url = isHiding ? '{% url "maps:hide_tile" map.pk %}' : '{% url "maps:reveal_tile" map.pk %}';
+
+        const formData = new FormData();
+        formData.append('x', x);
+        formData.append('y', y);
+        formData.append('radius', radius);
+
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Fetch updated revealed tiles
+                location.reload(); // Simple approach - reload to get updated data
+            }
+        });
+    }
+
+    function resetFogOfWar() {
+        if (!confirm('Reset all fog of war? This will hide all tiles.')) return;
+
+        fetch('{% url "maps:reset_fog_of_war" map.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+
+    // Tile interaction events
+    document.querySelectorAll('.map-tile').forEach(tile => {
+        // Click handler - mode dependent
+        tile.addEventListener('click', function(e) {
+            if (currentMode === 'paint') {
+                paintTile(this);
+            } else if (currentMode === 'measure') {
+                measureDistance(this);
+            } else if (currentMode === 'fog') {
+                handleFogClick(this, e.shiftKey);
+            }
+        });
+
+        // Mouse down starts painting mode (only in paint mode)
         tile.addEventListener('mousedown', function() {
-            isPainting = true;
-            paintTile(this);
+            if (currentMode === 'paint') {
+                isPainting = true;
+                paintTile(this);
+            }
         });
 
         // Mouse enter while painting continues painting
         tile.addEventListener('mouseenter', function() {
-            if (isPainting) {
+            if (isPainting && currentMode === 'paint') {
                 paintTile(this);
             }
         });
@@ -448,6 +760,14 @@
             }
         }
     });
+
+    // Initialize with paint mode active
+    setMode('paint');
+
+    // Initialize fog of war
+    if (fogOfWarEnabled) {
+        updateFogOfWar();
+    }
 </script>
 {% endif %}
 {% endblock %}

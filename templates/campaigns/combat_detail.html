@@ -1,0 +1,451 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ encounter.name }} - Combat Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .combat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+
+    .round-counter {
+        font-size: 2em;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .participant-card {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+    }
+
+    .participant-card.active-turn {
+        border-color: #ffc107;
+        background-color: #fffbea;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+    }
+
+    .participant-card.player {
+        border-left: 5px solid #0d6efd;
+    }
+
+    .participant-card.ally {
+        border-left: 5px solid #198754;
+    }
+
+    .participant-card.enemy {
+        border-left: 5px solid #dc3545;
+    }
+
+    .participant-card.neutral {
+        border-left: 5px solid #6c757d;
+    }
+
+    .participant-card.defeated {
+        opacity: 0.5;
+        background-color: #f8f9fa;
+    }
+
+    .hp-bar {
+        height: 25px;
+        border-radius: 5px;
+        background-color: #e9ecef;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .hp-fill {
+        height: 100%;
+        transition: width 0.5s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.85em;
+    }
+
+    .hp-fill.healthy { background-color: #28a745; }
+    .hp-fill.wounded { background-color: #ffc107; }
+    .hp-fill.critical { background-color: #dc3545; }
+
+    .initiative-badge {
+        font-size: 1.5em;
+        font-weight: bold;
+        padding: 10px 15px;
+        border-radius: 50%;
+        background-color: #6c757d;
+        color: white;
+        display: inline-block;
+    }
+
+    .damage-controls {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+    }
+
+    .damage-btn {
+        padding: 5px 10px;
+        font-size: 0.85em;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Combat Header -->
+    <div class="combat-header">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <h2>{{ encounter.name }}</h2>
+                <p class="mb-0">{{ session.campaign.name }} - {{ session.title }}</p>
+            </div>
+            <div class="col-md-6">
+                <div class="round-counter">
+                    Round <span id="currentRound">{{ encounter.current_round }}</span>
+                </div>
+                <div class="text-center">
+                    <span class="badge" id="combatStatus" style="font-size: 1em;">
+                        {% if encounter.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                        {% elif encounter.status == 'setup' %}
+                            <span class="badge bg-warning text-dark">Setup</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ encounter.get_status_display }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <a href="{% url 'campaigns:session_detail' campaign.pk session.pk %}" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Back to Session
+                </a>
+                <a href="{% url 'campaigns:combat_log' campaign.pk session.pk encounter.pk %}" class="btn btn-info">
+                    <i class="bi bi-journal-text"></i> Combat Log
+                </a>
+                {% if is_gm %}
+                    <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addParticipantModal">
+                        <i class="bi bi-person-plus"></i> Add Participant
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Combat Controls (GM Only) -->
+    {% if is_gm %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-auto">
+                    {% if encounter.status == 'setup' %}
+                        <button class="btn btn-success btn-lg" onclick="startCombat()">
+                            <i class="bi bi-play-fill"></i> Start Combat
+                        </button>
+                    {% elif encounter.status == 'active' %}
+                        <button class="btn btn-primary btn-lg" onclick="nextTurn()">
+                            <i class="bi bi-skip-forward-fill"></i> Next Turn
+                        </button>
+                        <button class="btn btn-warning" onclick="pauseCombat()">
+                            <i class="bi bi-pause-fill"></i> Pause
+                        </button>
+                        <button class="btn btn-danger" onclick="endCombat()">
+                            <i class="bi bi-stop-fill"></i> End Combat
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="col">
+                    <div id="currentTurnDisplay" class="alert alert-info mb-0">
+                        {% if encounter.current_participant %}
+                            <strong>Current Turn:</strong> {{ encounter.current_participant.name }}
+                        {% else %}
+                            Waiting to start combat...
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Participants List -->
+    <div class="row">
+        <div class="col-12">
+            <h4>Combatants ({{ participants.count }})</h4>
+            <div id="participantsList">
+                {% for participant in participants %}
+                <div class="participant-card {{ participant.team }} {% if participant.is_defeated %}defeated{% endif %} {% if encounter.current_participant.id == participant.id %}active-turn{% endif %}"
+                     data-participant-id="{{ participant.id }}">
+                    <div class="row align-items-center">
+                        <!-- Initiative -->
+                        <div class="col-auto">
+                            <div class="initiative-badge">{{ participant.initiative }}</div>
+                        </div>
+
+                        <!-- Name and Info -->
+                        <div class="col-md-3">
+                            <h5 class="mb-0">{{ participant.name }}</h5>
+                            <small class="text-muted">
+                                <span class="badge bg-{{ participant.team }} status-badge">
+                                    {{ participant.get_team_display }}
+                                </span>
+                                {% if participant.character %}
+                                    <i class="bi bi-link"></i> {{ participant.character.name }}
+                                {% endif %}
+                            </small>
+                        </div>
+
+                        <!-- HP Bar -->
+                        <div class="col-md-4">
+                            <label class="small text-muted">Health</label>
+                            <div class="hp-bar">
+                                <div class="hp-fill {% if participant.hp_percentage >= 50 %}healthy{% elif participant.hp_percentage >= 25 %}wounded{% else %}critical{% endif %}"
+                                     style="width: {{ participant.hp_percentage }}%;"
+                                     data-hp="{{ participant.current_hp }}"
+                                     data-max-hp="{{ participant.max_hp }}">
+                                    <span style="position: absolute; width: 100%; text-align: center; color: #000;">
+                                        {{ participant.current_hp }} / {{ participant.max_hp }}
+                                    </span>
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                Condition: <strong>{{ participant.condition }}</strong>
+                            </small>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="col-md-2">
+                            <small class="text-muted">
+                                <div>Physical: {{ participant.physical_damage }}</div>
+                                <div>Stun: {{ participant.stun_damage }}</div>
+                                <div>Edge: {{ participant.edge_current }}/{{ participant.edge_max }}</div>
+                                <div>Armor: {{ participant.armor }}</div>
+                            </small>
+                        </div>
+
+                        <!-- Actions (GM Only) -->
+                        {% if is_gm %}
+                        <div class="col-auto">
+                            <div class="damage-controls">
+                                <button class="btn btn-sm btn-danger damage-btn" onclick="applyDamage({{ participant.id }}, -5, 'physical')" title="Apply 5 Physical Damage">
+                                    -5 P
+                                </button>
+                                <button class="btn btn-sm btn-warning damage-btn" onclick="applyDamage({{ participant.id }}, -5, 'stun')" title="Apply 5 Stun Damage">
+                                    -5 S
+                                </button>
+                                <button class="btn btn-sm btn-success damage-btn" onclick="applyDamage({{ participant.id }}, 5, 'physical')" title="Heal 5 HP">
+                                    +5
+                                </button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Effects -->
+                    {% if participant.effects.all %}
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <small class="text-muted">Effects:</small>
+                            {% for effect in participant.effects.all %}
+                                {% if effect.is_active %}
+                                <span class="badge bg-{% if effect.effect_type == 'buff' %}success{% elif effect.effect_type == 'debuff' %}danger{% else %}secondary{% endif %}">
+                                    {{ effect.name }} ({{ effect.rounds_remaining }}r)
+                                </span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    No participants added yet.
+                    {% if is_gm %}
+                        Click "Add Participant" to add combatants.
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Participant Modal (GM Only) -->
+{% if is_gm %}
+<div class="modal fade" id="addParticipantModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Combat Participant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Click the link below to add a new participant to this combat encounter:</p>
+                <a href="{% url 'campaigns:combat_participant_add' campaign.pk session.pk encounter.pk %}" class="btn btn-primary">
+                    <i class="bi bi-person-plus"></i> Add Participant
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function startCombat() {
+        fetch('{% url "campaigns:combat_start" campaign.pk session.pk encounter.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+
+    function endCombat() {
+        if (!confirm('Are you sure you want to end this combat encounter?')) return;
+
+        fetch('{% url "campaigns:combat_end" campaign.pk session.pk encounter.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Combat ended! Session statistics updated.');
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+
+    function nextTurn() {
+        fetch('{% url "campaigns:combat_next_turn" campaign.pk session.pk encounter.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update round counter
+                document.getElementById('currentRound').textContent = data.current_round;
+
+                // Update current turn display
+                if (data.current_participant.name) {
+                    document.getElementById('currentTurnDisplay').innerHTML =
+                        '<strong>Current Turn:</strong> ' + data.current_participant.name;
+                }
+
+                // Update active turn highlighting
+                document.querySelectorAll('.participant-card').forEach(card => {
+                    card.classList.remove('active-turn');
+                    if (parseInt(card.dataset.participantId) === data.current_participant.id) {
+                        card.classList.add('active-turn');
+                    }
+                });
+
+                // Scroll to active participant
+                const activeCard = document.querySelector('.participant-card.active-turn');
+                if (activeCard) {
+                    activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+
+    function applyDamage(participantId, hpChange, damageType) {
+        fetch(`/campaigns/{{ campaign.pk }}/sessions/{{ session.pk }}/combat/{{ encounter.pk }}/participant/${participantId}/update-hp/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `hp_change=${hpChange}&damage_type=${damageType}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update HP bar
+                const card = document.querySelector(`[data-participant-id="${participantId}"]`);
+                const hpFill = card.querySelector('.hp-fill');
+                const hpText = hpFill.querySelector('span');
+
+                hpFill.style.width = data.hp_percentage + '%';
+                hpText.textContent = data.current_hp + ' / ' + data.max_hp;
+
+                // Update color based on HP
+                hpFill.className = 'hp-fill';
+                if (data.hp_percentage >= 50) {
+                    hpFill.classList.add('healthy');
+                } else if (data.hp_percentage >= 25) {
+                    hpFill.classList.add('wounded');
+                } else {
+                    hpFill.classList.add('critical');
+                }
+
+                // Update condition
+                const conditionEl = card.querySelector('small strong');
+                if (conditionEl) {
+                    conditionEl.textContent = data.condition;
+                }
+
+                // Mark as defeated if HP is 0
+                if (data.is_defeated) {
+                    card.classList.add('defeated');
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+</script>
+{% endblock %}

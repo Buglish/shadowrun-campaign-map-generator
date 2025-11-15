@@ -67,6 +67,17 @@ class Map(models.Model):
         help_text="Seed used for map generation (for reproducibility)"
     )
 
+    # Fog of War
+    fog_of_war_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable fog of war for this map"
+    )
+    revealed_tiles = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of revealed tile coordinates [[x, y], ...] for fog of war"
+    )
+
     class Meta:
         ordering = ['-updated_at']
 

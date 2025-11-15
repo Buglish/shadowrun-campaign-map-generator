@@ -622,3 +622,137 @@ def generate_random_tiles(width, height, seed, config):
             tiles.append((x, y, terrain))
 
     return tiles
+
+
+# Fog of War Views
+
+@login_required
+def toggle_fog_of_war(request, pk):
+    """Toggle fog of war for a map (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    map_obj = get_object_or_404(models.Map, pk=pk)
+
+    # Only owner can toggle fog of war
+    if map_obj.owner != request.user:
+        return JsonResponse({'success': False, 'error': 'Only the map owner can toggle fog of war'})
+
+    map_obj.fog_of_war_enabled = not map_obj.fog_of_war_enabled
+    map_obj.save()
+
+    return JsonResponse({
+        'success': True,
+        'fog_of_war_enabled': map_obj.fog_of_war_enabled
+    })
+
+
+@login_required
+def reveal_tile(request, pk):
+    """Reveal a tile in fog of war (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    map_obj = get_object_or_404(models.Map, pk=pk)
+
+    # Only owner can reveal tiles
+    if map_obj.owner != request.user:
+        return JsonResponse({'success': False, 'error': 'Only the map owner can reveal tiles'})
+
+    try:
+        x = int(request.POST.get('x'))
+        y = int(request.POST.get('y'))
+        radius = int(request.POST.get('radius', 1))  # Reveal radius
+
+        revealed_tiles = map_obj.revealed_tiles if isinstance(map_obj.revealed_tiles, list) else []
+
+        # Reveal tiles in radius
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                tile_x = x + dx
+                tile_y = y + dy
+
+                # Check if within map bounds
+                if 0 <= tile_x < map_obj.width and 0 <= tile_y < map_obj.height:
+                    tile_coords = [tile_x, tile_y]
+                    if tile_coords not in revealed_tiles:
+                        revealed_tiles.append(tile_coords)
+
+        map_obj.revealed_tiles = revealed_tiles
+        map_obj.save()
+
+        return JsonResponse({
+            'success': True,
+            'revealed_count': len(revealed_tiles)
+        })
+
+    except (ValueError, TypeError) as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Invalid data: {str(e)}'
+        }, status=400)
+
+
+@login_required
+def hide_tile(request, pk):
+    """Hide a tile in fog of war (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    map_obj = get_object_or_404(models.Map, pk=pk)
+
+    # Only owner can hide tiles
+    if map_obj.owner != request.user:
+        return JsonResponse({'success': False, 'error': 'Only the map owner can hide tiles'})
+
+    try:
+        x = int(request.POST.get('x'))
+        y = int(request.POST.get('y'))
+        radius = int(request.POST.get('radius', 1))  # Hide radius
+
+        revealed_tiles = map_obj.revealed_tiles if isinstance(map_obj.revealed_tiles, list) else []
+
+        # Hide tiles in radius
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                tile_x = x + dx
+                tile_y = y + dy
+                tile_coords = [tile_x, tile_y]
+
+                if tile_coords in revealed_tiles:
+                    revealed_tiles.remove(tile_coords)
+
+        map_obj.revealed_tiles = revealed_tiles
+        map_obj.save()
+
+        return JsonResponse({
+            'success': True,
+            'revealed_count': len(revealed_tiles)
+        })
+
+    except (ValueError, TypeError) as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Invalid data: {str(e)}'
+        }, status=400)
+
+
+@login_required
+def reset_fog_of_war(request, pk):
+    """Reset all fog of war (hide all tiles) (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    map_obj = get_object_or_404(models.Map, pk=pk)
+
+    # Only owner can reset fog of war
+    if map_obj.owner != request.user:
+        return JsonResponse({'success': False, 'error': 'Only the map owner can reset fog of war'})
+
+    map_obj.revealed_tiles = []
+    map_obj.save()
+
+    return JsonResponse({
+        'success': True,
+        'revealed_count': 0
+    })

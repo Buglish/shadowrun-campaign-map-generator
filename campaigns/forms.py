@@ -1,5 +1,5 @@
 from django import forms
-from .models import Campaign, Session, SessionObjective
+from .models import Campaign, Session, SessionObjective, CombatEncounter, CombatParticipant, CombatEffect
 from characters.models import Character
 from maps.models import Map
 
@@ -224,5 +224,115 @@ class SessionObjectiveForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 2,
                 'placeholder': 'Notes about completing this objective'
+            }),
+        }
+
+
+class CombatEncounterForm(forms.ModelForm):
+    """Form for creating and editing combat encounters"""
+
+    class Meta:
+        model = CombatEncounter
+        fields = ['name', 'description', 'status']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter encounter name'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Encounter description'
+            }),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class CombatParticipantForm(forms.ModelForm):
+    """Form for adding/editing combat participants"""
+
+    class Meta:
+        model = CombatParticipant
+        fields = [
+            'name', 'team', 'character', 'initiative', 'max_hp', 'current_hp',
+            'physical_damage', 'stun_damage', 'edge_current', 'edge_max',
+            'armor', 'dodge_pool', 'notes'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Participant name'
+            }),
+            'team': forms.Select(attrs={'class': 'form-select'}),
+            'character': forms.Select(attrs={'class': 'form-select'}),
+            'initiative': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'max_hp': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'value': '10'
+            }),
+            'current_hp': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'physical_damage': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'stun_damage': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'edge_current': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'edge_max': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'armor': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'dodge_pool': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Notes'
+            }),
+        }
+
+
+class CombatEffectForm(forms.ModelForm):
+    """Form for adding/editing combat effects"""
+
+    class Meta:
+        model = CombatEffect
+        fields = ['name', 'effect_type', 'description', 'duration_rounds', 'rounds_remaining']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Effect name'
+            }),
+            'effect_type': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Effect description'
+            }),
+            'duration_rounds': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1'
+            }),
+            'rounds_remaining': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0'
             }),
         }

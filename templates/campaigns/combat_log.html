@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ encounter.name }} - Combat Log{% endblock %}
+
+{% block extra_css %}
+<style>
+    .combat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+
+    .log-entry {
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        border-left: 4px solid #dee2e6;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        transition: all 0.2s;
+    }
+
+    .log-entry:hover {
+        background-color: #e9ecef;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .log-entry.combat_start { border-left-color: #28a745; background-color: #d4edda; }
+    .log-entry.combat_end { border-left-color: #dc3545; background-color: #f8d7da; }
+    .log-entry.round_start { border-left-color: #0d6efd; background-color: #cfe2ff; }
+    .log-entry.turn_start { border-left-color: #6c757d; background-color: #e2e3e5; }
+    .log-entry.attack { border-left-color: #fd7e14; }
+    .log-entry.damage { border-left-color: #dc3545; background-color: #ffe8e8; }
+    .log-entry.healing { border-left-color: #20c997; background-color: #d1f0e6; }
+    .log-entry.effect_applied { border-left-color: #6610f2; background-color: #e0cffc; }
+    .log-entry.effect_expired { border-left-color: #adb5bd; }
+    .log-entry.defeated { border-left-color: #dc3545; background-color: #ffe0e0; font-weight: bold; }
+    .log-entry.edge_used { border-left-color: #ffc107; background-color: #fff3cd; }
+
+    .round-section {
+        margin-bottom: 30px;
+    }
+
+    .round-header {
+        background-color: #0d6efd;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+
+    .timestamp {
+        color: #6c757d;
+        font-size: 0.85em;
+        font-family: monospace;
+    }
+
+    .event-type-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        margin-right: 8px;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+
+    .participants-info {
+        font-size: 0.9em;
+        color: #495057;
+        margin-top: 5px;
+    }
+
+    .actor { color: #0d6efd; font-weight: bold; }
+    .target { color: #dc3545; font-weight: bold; }
+
+    .log-stats {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .stat-label {
+        font-size: 0.85em;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Combat Header -->
+    <div class="combat-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><i class="bi bi-journal-text"></i> Combat Log: {{ encounter.name }}</h2>
+                <p class="mb-0">{{ session.campaign.name }} - {{ session.title }}</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'campaigns:combat_detail' campaign.pk session.pk encounter.pk %}" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Back to Combat
+                </a>
+                <a href="{% url 'campaigns:session_detail' campaign.pk session.pk %}" class="btn btn-light">
+                    <i class="bi bi-house"></i> Session
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combat Statistics -->
+    <div class="log-stats">
+        <div class="row">
+            <div class="col-md-3 stat-item">
+                <div class="stat-value">{{ encounter.current_round }}</div>
+                <div class="stat-label">Total Rounds</div>
+            </div>
+            <div class="col-md-3 stat-item">
+                <div class="stat-value">{{ logs.count }}</div>
+                <div class="stat-label">Total Events</div>
+            </div>
+            <div class="col-md-3 stat-item">
+                <div class="stat-value">{{ encounter.participant_count }}</div>
+                <div class="stat-label">Participants</div>
+            </div>
+            <div class="col-md-3 stat-item">
+                <div class="stat-value">
+                    {% if encounter.started_at and encounter.ended_at %}
+                        {{ encounter.ended_at|timesince:encounter.started_at }}
+                    {% elif encounter.started_at %}
+                        In Progress
+                    {% else %}
+                        Not Started
+                    {% endif %}
+                </div>
+                <div class="stat-label">Duration</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combat Log by Round -->
+    {% if logs_by_round %}
+        {% for round_num, round_logs in logs_by_round %}
+        <div class="round-section">
+            <div class="round-header">
+                <i class="bi bi-clock-history"></i> Round {{ round_num }}
+            </div>
+            {% for log in round_logs %}
+            <div class="log-entry {{ log.event_type }}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <span class="event-type-badge bg-secondary">{{ log.get_event_type_display }}</span>
+                        <span class="log-description">{{ log.description }}</span>
+
+                        {% if log.actor or log.target %}
+                        <div class="participants-info">
+                            {% if log.actor %}
+                                <i class="bi bi-person-fill"></i> <span class="actor">{{ log.actor.name }}</span>
+                            {% endif %}
+                            {% if log.actor and log.target %}
+                                <i class="bi bi-arrow-right"></i>
+                            {% endif %}
+                            {% if log.target %}
+                                <i class="bi bi-bullseye"></i> <span class="target">{{ log.target.name }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if log.data %}
+                        <div class="participants-info">
+                            {% if log.data.damage_amount %}
+                                <i class="bi bi-shield-x"></i> Damage: {{ log.data.damage_amount }} ({{ log.data.damage_type }})
+                            {% endif %}
+                            {% if log.data.healing_amount %}
+                                <i class="bi bi-heart-pulse"></i> Healing: {{ log.data.healing_amount }}
+                            {% endif %}
+                            {% if log.data.enemies_defeated %}
+                                <i class="bi bi-trophy"></i> Enemies Defeated: {{ log.data.enemies_defeated }}
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="timestamp">
+                        {{ log.formatted_timestamp }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No combat events have been logged yet. Combat logs will appear here as the encounter progresses.
+        </div>
+    {% endif %}
+
+    <!-- Export Options (for future implementation) -->
+    {% if is_gm and logs.count > 0 %}
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5><i class="bi bi-download"></i> Export Combat Log</h5>
+            <p class="text-muted">Export this combat log for your records (coming soon):</p>
+            <button class="btn btn-outline-primary" disabled>
+                <i class="bi bi-file-text"></i> Export as Text
+            </button>
+            <button class="btn btn-outline-success" disabled>
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export as JSON
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

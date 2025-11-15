@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Participant - {{ encounter.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3>{{ action }} Combat Participant</h3>
+                    <p class="mb-0 text-muted">{{ encounter.name }}</p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Basic Information</h5>
+                                {{ form.name|as_crispy_field }}
+                                {{ form.team|as_crispy_field }}
+                                {{ form.character|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Combat Stats</h5>
+                                {{ form.initiative|as_crispy_field }}
+                                {{ form.max_hp|as_crispy_field }}
+                                {{ form.current_hp|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h5>Shadowrun Damage</h5>
+                                {{ form.physical_damage|as_crispy_field }}
+                                {{ form.stun_damage|as_crispy_field }}
+                                {{ form.edge_current|as_crispy_field }}
+                                {{ form.edge_max|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Defensive Stats</h5>
+                                {{ form.armor|as_crispy_field }}
+                                {{ form.dodge_pool|as_crispy_field }}
+                                {{ form.notes|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">{{ action }} Participant</button>
+                            <a href="{% url 'campaigns:combat_detail' campaign.pk session.pk encounter.pk %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

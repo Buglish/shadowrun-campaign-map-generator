@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ character.name }} - Skills{% endblock %}
+
+{% block extra_css %}
+<style>
+    .skill-card {
+        border-left: 4px solid #0d6efd;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+
+    .skill-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateX(2px);
+    }
+
+    .skill-category-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .dice-pool-badge {
+        font-size: 1.3em;
+        font-weight: bold;
+        padding: 8px 15px;
+        border-radius: 50%;
+        background-color: #28a745;
+        color: white;
+        display: inline-block;
+        min-width: 50px;
+        text-align: center;
+    }
+
+    .attribute-badge {
+        background-color: #6c757d;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+
+    .no-skills-message {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-trophy"></i>
+                {{ character.name }} - Skills
+            </h2>
+            <p class="text-muted">Manage your character's skills and view dice pools</p>
+        </div>
+        <div>
+            <a href="{% url 'characters:detail' character.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Character
+            </a>
+            <a href="{% url 'characters:skill_add' character.pk %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Skill
+            </a>
+        </div>
+    </div>
+
+    <!-- Skills by Category -->
+    {% if skills_by_category %}
+        {% for category, skills in skills_by_category.items %}
+        <div class="skill-category mb-4">
+            <div class="skill-category-header">
+                <h4 class="mb-0">
+                    {% if category == "Combat" %}<i class="bi bi-crosshair"></i>
+                    {% elif category == "Physical" %}<i class="bi bi-person-walking"></i>
+                    {% elif category == "Social" %}<i class="bi bi-people"></i>
+                    {% elif category == "Technical" %}<i class="bi bi-gear"></i>
+                    {% elif category == "Vehicle" %}<i class="bi bi-truck"></i>
+                    {% elif category == "Magical" %}<i class="bi bi-stars"></i>
+                    {% elif category == "Resonance" %}<i class="bi bi-cpu"></i>
+                    {% else %}<i class="bi bi-journal"></i>{% endif %}
+                    {{ category }} Skills
+                </h4>
+            </div>
+
+            {% for character_skill in skills %}
+            <div class="card skill-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <!-- Dice Pool -->
+                        <div class="col-auto">
+                            <div class="dice-pool-badge" title="Dice Pool: {{ character_skill.skill.get_linked_attribute_display }} + Skill Rating">
+                                {{ character_skill.dice_pool }}
+                            </div>
+                        </div>
+
+                        <!-- Skill Info -->
+                        <div class="col">
+                            <h5 class="mb-1">
+                                {{ character_skill.skill.name }}
+                                {% if character_skill.specialization %}
+                                    <span class="badge bg-info">{{ character_skill.specialization }}</span>
+                                {% endif %}
+                            </h5>
+                            <small class="text-muted">
+                                <span class="attribute-badge">{{ character_skill.skill.get_linked_attribute_display }}</span>
+                                Rating: {{ character_skill.rating }}
+                                {% if character_skill.notes %}
+                                    | {{ character_skill.notes }}
+                                {% endif %}
+                            </small>
+                            {% if character_skill.skill.description %}
+                                <p class="mb-0 mt-1 small text-muted">{{ character_skill.skill.description }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-auto">
+                            <a href="{% url 'characters:skill_edit' character.pk character_skill.pk %}"
+                               class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'characters:skill_delete' character.pk character_skill.pk %}"
+                               class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body no-skills-message">
+                <i class="bi bi-inbox" style="font-size: 3em;"></i>
+                <h4 class="mt-3">No Skills Yet</h4>
+                <p class="text-muted">Add skills to build your character's capabilities</p>
+                <a href="{% url 'characters:skill_add' character.pk %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Add Your First Skill
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Skill Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Total Skills:</strong> {{ character.skills.count }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Highest Rating:</strong>
+                    {% if character.skills.exists %}
+                        {{ character.skills.all|dictsort:"rating"|last.rating }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <strong>Highest Dice Pool:</strong>
+                    {% if character.skills.exists %}
+                        {{ character.skills.all|dictsort:"dice_pool"|last.dice_pool }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <strong>Categories:</strong> {{ skills_by_category|length }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

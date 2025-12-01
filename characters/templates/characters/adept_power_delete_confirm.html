@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Adept Power - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirm Power Deletion
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to remove the following adept power from <strong>{{ character.name }}</strong>?</p>
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5>{{ character_power.power.name }}</h5>
+                            <p class="mb-0">
+                                <strong>Level:</strong> {{ character_power.level }}<br>
+                                <strong>Power Point Cost:</strong> {{ character_power.power.cost }} PP per level<br>
+                                <strong>Total Cost:</strong> {% widthratio character_power.power.cost 1 character_power.level %} PP
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        This action cannot be undone.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Power
+                        </button>
+                        <a href="{% url 'characters:adept_powers_manage' character.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

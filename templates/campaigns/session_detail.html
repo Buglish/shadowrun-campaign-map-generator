@@ -140,24 +140,101 @@
     </div>
 {% endif %}
 
+<!-- Session Objectives -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-bullseye"></i> Session Objectives</h5>
+            {% if can_edit %}
+                <a href="{% url 'campaigns:objective_add' campaign_pk=campaign.pk session_pk=session.pk %}" class="btn btn-sm btn-light">
+                    <i class="bi bi-plus-circle"></i> Add Objective
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% if session.objectives.all %}
+            <div class="list-group">
+                {% for objective in session.objectives.all %}
+                <div class="list-group-item" id="objective-{{ objective.pk }}">
+                    <div class="d-flex align-items-start">
+                        <!-- Checkbox for completion -->
+                        <div class="form-check me-3">
+                            <input class="form-check-input objective-checkbox"
+                                   type="checkbox"
+                                   {% if objective.is_completed %}checked{% endif %}
+                                   data-objective-id="{{ objective.pk }}"
+                                   id="check-{{ objective.pk }}">
+                        </div>
+
+                        <!-- Objective content -->
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <p class="mb-1 {% if objective.is_completed %}text-decoration-line-through text-muted{% endif %}">
+                                        {{ objective.description }}
+                                    </p>
+                                    {% if objective.completion_notes %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i> {{ objective.completion_notes }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Action buttons (GM only) -->
+                                {% if can_edit %}
+                                <div class="btn-group btn-group-sm ms-2">
+                                    <a href="{% url 'campaigns:objective_edit' campaign_pk=campaign.pk session_pk=session.pk objective_pk=objective.pk %}"
+                                       class="btn btn-outline-primary btn-sm" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'campaigns:objective_delete' campaign_pk=campaign.pk session_pk=session.pk objective_pk=objective.pk %}"
+                                       class="btn btn-outline-danger btn-sm" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Progress Summary -->
+            {% with total=session.objectives.all|length %}
+            {% if total > 0 %}
+            <div class="mt-3">
+                {% comment %}Count completed objectives{% endcomment %}
+                {% with completed_list=session.objectives.all %}
+                {% comment %}We'll calculate this in JavaScript for real-time updates{% endcomment %}
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar bg-primary"
+                         role="progressbar"
+                         style="width: 0%;"
+                         aria-valuenow="0"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
+                        <span id="objectives-progress">0 of {{ total }} completed</span>
+                    </div>
+                </div>
+                {% endwith %}
+            </div>
+            {% endif %}
+            {% endwith %}
+        {% else %}
+            <p class="text-muted text-center mb-0">
+                No objectives set for this session yet.
+                {% if can_edit %}
+                    <a href="{% url 'campaigns:objective_add' campaign_pk=campaign.pk session_pk=session.pk %}">Add the first objective</a>
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Important Events -->
 <div class="row">
-    {% if session.objectives_completed %}
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-check2-square"></i> Objectives Completed</h5>
-                    <ul class="list-unstyled mb-0">
-                        {% for objective in session.objectives_completed.splitlines %}
-                            {% if objective %}
-                                <li><i class="bi bi-check text-success"></i> {{ objective }}</li>
-                            {% endif %}
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-    {% endif %}
 
     {% if session.important_npcs %}
         <div class="col-md-4 mb-4">
@@ -299,4 +376,82 @@
         </div>
     </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle objective checkbox toggling
+document.querySelectorAll('.objective-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const objectiveId = this.dataset.objectiveId;
+        const isCompleted = this.checked;
+        const objectiveItem = document.getElementById(`objective-${objectiveId}`);
+        const objectiveText = objectiveItem.querySelector('p');
+
+        // Make AJAX request to toggle objective
+        fetch(`{% url 'campaigns:objective_toggle' campaign_pk=campaign.pk session_pk=session.pk objective_pk=0 %}`.replace('/0/', `/${objectiveId}/`), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update visual state
+                if (data.is_completed) {
+                    objectiveText.classList.add('text-decoration-line-through', 'text-muted');
+                } else {
+                    objectiveText.classList.remove('text-decoration-line-through', 'text-muted');
+                }
+
+                // Update progress bar
+                updateObjectivesProgress();
+            } else {
+                // Revert checkbox on error
+                checkbox.checked = !isCompleted;
+                alert('Error updating objective: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            checkbox.checked = !isCompleted;
+            alert('Error updating objective');
+        });
+    });
+});
+
+function updateObjectivesProgress() {
+    const checkboxes = document.querySelectorAll('.objective-checkbox');
+    const total = checkboxes.length;
+    const completed = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+    if (total > 0) {
+        const percentage = Math.round((completed / total) * 100);
+        const progressBar = document.querySelector('.progress-bar');
+        const progressText = document.getElementById('objectives-progress');
+
+        if (progressBar && progressText) {
+            progressBar.style.width = percentage + '%';
+            progressBar.setAttribute('aria-valuenow', percentage);
+            progressText.textContent = `${completed} of ${total} completed`;
+
+            // Update color based on completion
+            if (completed === total) {
+                progressBar.classList.remove('bg-primary');
+                progressBar.classList.add('bg-success');
+            } else {
+                progressBar.classList.remove('bg-success');
+                progressBar.classList.add('bg-primary');
+            }
+        }
+    }
+}
+
+// Initialize progress bar on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateObjectivesProgress();
+});
+</script>
 {% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Complex Form - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirm Complex Form Deletion
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to remove the following complex form from <strong>{{ character.name }}</strong>?</p>
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5>{{ character_form.form.name }}</h5>
+                            <p class="mb-0">
+                                <strong>Target:</strong> {{ character_form.form.get_target_display }}<br>
+                                <strong>Duration:</strong> {{ character_form.form.get_duration_display }}<br>
+                                <strong>Fading:</strong> {{ character_form.form.fading }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        This action cannot be undone.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Complex Form
+                        </button>
+                        <a href="{% url 'characters:complex_forms_manage' character.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

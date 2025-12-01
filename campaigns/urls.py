@@ -17,6 +17,12 @@ urlpatterns = [
     path('<int:campaign_pk>/sessions/<int:session_pk>/edit/', views.session_edit, name='session_edit'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/delete/', views.session_delete, name='session_delete'),
 
+    # Session Objectives URLs
+    path('<int:campaign_pk>/sessions/<int:session_pk>/objectives/add/', views.session_objective_add, name='objective_add'),
+    path('<int:campaign_pk>/sessions/<int:session_pk>/objectives/<int:objective_pk>/edit/', views.session_objective_edit, name='objective_edit'),
+    path('<int:campaign_pk>/sessions/<int:session_pk>/objectives/<int:objective_pk>/delete/', views.session_objective_delete, name='objective_delete'),
+    path('<int:campaign_pk>/sessions/<int:session_pk>/objectives/<int:objective_pk>/toggle/', views.session_objective_toggle, name='objective_toggle'),
+
     # Combat Tracker URLs
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/create/', views.combat_create, name='combat_create'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/', views.combat_detail, name='combat_detail'),
@@ -26,6 +32,7 @@ urlpatterns = [
     # Combat AJAX endpoints
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/next-turn/', views.combat_next_turn, name='combat_next_turn'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/participant/<int:participant_pk>/update-hp/', views.combat_update_hp, name='combat_update_hp'),
+    path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/attack/', views.combat_attack, name='combat_attack'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/start/', views.combat_start, name='combat_start'),
     path('<int:campaign_pk>/sessions/<int:session_pk>/combat/<int:encounter_pk>/end/', views.combat_end, name='combat_end'),
 

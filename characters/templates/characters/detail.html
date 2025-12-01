@@ -8,6 +8,9 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>{{ character.name }}</h1>
             <div>
+                <a href="{% url 'characters:advanced_sheet' character.pk %}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-text"></i> Advanced Sheet
+                </a>
                 <a href="{% url 'characters:edit' character.pk %}" class="btn btn-outline-primary">Edit</a>
                 <a href="{% url 'characters:list' %}" class="btn btn-outline-secondary">Back to List</a>
             </div>
@@ -95,6 +98,54 @@
                         <p><strong>Armor Rating:</strong> {{ character.armor_rating }}</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Skills Section -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="bi bi-trophy"></i> Skills
+                    </h4>
+                    <a href="{% url 'characters:skills_manage' character.pk %}" class="btn btn-sm btn-light">
+                        <i class="bi bi-gear"></i> Manage Skills
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if character.skills.exists %}
+                    <div class="row">
+                        {% for character_skill in character.skills.all|slice:":6" %}
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>
+                                    <strong>{{ character_skill.skill.name }}</strong>
+                                    {% if character_skill.specialization %}
+                                        <small class="text-muted">({{ character_skill.specialization }})</small>
+                                    {% endif %}
+                                </span>
+                                <span class="badge bg-success">{{ character_skill.dice_pool }}</span>
+                            </div>
+                            <small class="text-muted">
+                                {{ character_skill.skill.get_category_display }} • Rating {{ character_skill.rating }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if character.skills.count > 6 %}
+                    <div class="text-center mt-3">
+                        <a href="{% url 'characters:skills_manage' character.pk %}" class="btn btn-sm btn-outline-primary">
+                            View All {{ character.skills.count }} Skills
+                        </a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center mb-0">
+                        No skills added yet.
+                        <a href="{% url 'characters:skills_manage' character.pk %}">Add skills</a>
+                    </p>
+                {% endif %}
             </div>
         </div>
 
@@ -308,44 +359,71 @@
         <div class="row">
             <!-- Contacts -->
             {% with contacts=character.contacts.all %}
-            {% if contacts %}
             <div class="col-md-6 mb-4">
                 <div class="card shadow h-100">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Contacts</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-people"></i> Contacts</h5>
+                            <a href="{% url 'characters:contacts_manage' character.pk %}" class="btn btn-sm btn-light">
+                                <i class="bi bi-gear"></i> Manage
+                            </a>
+                        </div>
                     </div>
                     <div class="card-body">
-                        {% for contact in contacts %}
-                        <div class="mb-3">
-                            <p class="mb-1"><strong>{{ contact.name }}</strong> (C{{ contact.connection }}/L{{ contact.loyalty }})</p>
-                            {% if contact.archetype %}<p class="mb-1 text-muted"><small>{{ contact.archetype }}</small></p>{% endif %}
-                            {% if contact.description %}<p class="mb-0"><small>{{ contact.description }}</small></p>{% endif %}
-                        </div>
-                        {% endfor %}
+                        {% if contacts %}
+                            {% for contact in contacts|slice:":5" %}
+                            <div class="mb-3">
+                                <p class="mb-1"><strong>{{ contact.name }}</strong> (C{{ contact.connection }}/L{{ contact.loyalty }})</p>
+                                {% if contact.archetype %}<p class="mb-1 text-muted"><small>{{ contact.archetype }}</small></p>{% endif %}
+                                {% if contact.description %}<p class="mb-0"><small>{{ contact.description|truncatewords:15 }}</small></p>{% endif %}
+                            </div>
+                            {% endfor %}
+                            {% if contacts.count > 5 %}
+                            <div class="text-center mt-2">
+                                <a href="{% url 'characters:contacts_manage' character.pk %}" class="btn btn-sm btn-outline-info">
+                                    View All {{ contacts.count }} Contacts
+                                </a>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-muted text-center mb-0">
+                                No contacts added yet.
+                                <a href="{% url 'characters:contact_add' character.pk %}">Add contacts</a>
+                            </p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            {% endif %}
             {% endwith %}
 
             <!-- Languages -->
             {% with languages=character.languages.all %}
-            {% if languages %}
             <div class="col-md-6 mb-4">
                 <div class="card shadow h-100">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Languages</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-translate"></i> Languages</h5>
+                            <a href="{% url 'characters:languages_manage' character.pk %}" class="btn btn-sm btn-light">
+                                <i class="bi bi-gear"></i> Manage
+                            </a>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <ul>
-                            {% for lang in languages %}
-                            <li><strong>{{ lang.name }}:</strong> {{ lang.get_proficiency_display }}</li>
-                            {% endfor %}
-                        </ul>
+                        {% if languages %}
+                            <ul>
+                                {% for lang in languages %}
+                                <li><strong>{{ lang.name }}:</strong> {{ lang.get_proficiency_display }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted text-center mb-0">
+                                No languages added yet.
+                                <a href="{% url 'characters:language_add' character.pk %}">Add languages</a>
+                            </p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            {% endif %}
             {% endwith %}
         </div>
 
@@ -359,7 +437,12 @@
             <div class="card-body">
                 <!-- Spells -->
                 {% if spells %}
-                <h5>Spells</h5>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Spells</h5>
+                    <a href="{% url 'characters:spells_manage' character.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-gear"></i> Manage Spells
+                    </a>
+                </div>
                 <div class="table-responsive mb-3">
                     <table class="table table-sm">
                         <thead>
@@ -390,7 +473,12 @@
 
                 <!-- Adept Powers -->
                 {% if adept_powers %}
-                <h5>Adept Powers</h5>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Adept Powers</h5>
+                    <a href="{% url 'characters:adept_powers_manage' character.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-gear"></i> Manage Powers
+                    </a>
+                </div>
                 <ul>
                     {% for power in adept_powers %}
                     <li><strong>{{ power.power.name }}</strong> (Level {{ power.level }}) - {{ power.power.cost }} PP</li>
@@ -400,7 +488,12 @@
 
                 <!-- Complex Forms -->
                 {% if complex_forms %}
-                <h5>Complex Forms</h5>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Complex Forms</h5>
+                    <a href="{% url 'characters:complex_forms_manage' character.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-gear"></i> Manage Forms
+                    </a>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>

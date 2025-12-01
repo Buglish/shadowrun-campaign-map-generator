@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Skill - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if action == 'Add' %}plus-circle{% else %}pencil{% endif %}"></i>
+                        {{ action }} Skill for {{ character.name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        {% if character_skill %}
+                        <div class="alert alert-info mt-3">
+                            <strong>Current Dice Pool:</strong>
+                            {{ character_skill.dice_pool }}
+                            ({{ character_skill.skill.get_linked_attribute_display }} + Skill Rating)
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Skill
+                            </button>
+                            <a href="{% url 'characters:skills_manage' character.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Skill Rating Guide</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>0:</strong> Untrained (default attribute only)</li>
+                        <li><strong>1-2:</strong> Novice</li>
+                        <li><strong>3-4:</strong> Competent</li>
+                        <li><strong>5-6:</strong> Professional</li>
+                        <li><strong>7-8:</strong> Expert</li>
+                        <li><strong>9-10:</strong> Master</li>
+                        <li><strong>11-12:</strong> Legendary</li>
+                    </ul>
+                    <hr>
+                    <p class="mb-0 small text-muted">
+                        <strong>Dice Pool:</strong> Your dice pool is calculated as
+                        Linked Attribute + Skill Rating. Specializations grant +2 dice when applicable.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Spell - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirm Spell Deletion
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to remove the following spell from <strong>{{ character.name }}</strong>?</p>
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5>{{ character_spell.spell.name }}</h5>
+                            <p class="mb-0">
+                                <strong>Category:</strong> {{ character_spell.spell.get_category_display }}<br>
+                                <strong>Type:</strong> {{ character_spell.spell.get_spell_type_display }}<br>
+                                <strong>Range:</strong> {{ character_spell.spell.get_range_type_display }}<br>
+                                <strong>Duration:</strong> {{ character_spell.spell.get_duration_display }}<br>
+                                <strong>Drain:</strong> {{ character_spell.spell.drain }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        This action cannot be undone.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Spell
+                        </button>
+                        <a href="{% url 'characters:spells_manage' character.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

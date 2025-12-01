@@ -243,6 +243,9 @@
                         {% if is_gm %}
                         <div class="col-auto">
                             <div class="damage-controls">
+                                <button class="btn btn-sm btn-primary damage-btn" onclick="showAttackModal({{ participant.id }}, '{{ participant.name }}')" title="Attack" {% if participant.is_defeated %}disabled{% endif %}>
+                                    <i class="bi bi-crosshair"></i>
+                                </button>
                                 <button class="btn btn-sm btn-danger damage-btn" onclick="applyDamage({{ participant.id }}, -5, 'physical')" title="Apply 5 Physical Damage">
                                     -5 P
                                 </button>
@@ -356,6 +359,82 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="addEffect()">Add Effect</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attack Modal (GM Only) -->
+<div class="modal fade" id="attackModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-crosshair"></i>
+                    <span id="attackerName"></span> Attacks...
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="attackForm">
+                    <input type="hidden" id="attackerId">
+
+                    <div class="mb-3">
+                        <label for="targetSelect" class="form-label">Target *</label>
+                        <select class="form-select" id="targetSelect" required>
+                            <option value="">Select Target...</option>
+                            {% for participant in participants %}
+                                {% if not participant.is_defeated %}
+                                <option value="{{ participant.id }}" data-name="{{ participant.name }}">
+                                    {{ participant.name }} ({{ participant.get_team_display }}) - HP: {{ participant.current_hp }}/{{ participant.max_hp }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="attackPool" class="form-label">Attack Dice Pool *</label>
+                            <input type="number" class="form-control" id="attackPool" min="1" max="50" value="10" required>
+                            <small class="text-muted">Number of dice to roll for attack</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="damageBase" class="form-label">Base Damage *</label>
+                            <input type="text" class="form-control" id="damageBase" placeholder="e.g., 8P or 6S" value="8P" required>
+                            <small class="text-muted">Damage value (P=Physical, S=Stun)</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="weaponAP" class="form-label">Armor Penetration (AP)</label>
+                            <input type="number" class="form-control" id="weaponAP" value="0">
+                            <small class="text-muted">Negative number (e.g., -2)</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Options</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="useEdge">
+                                <label class="form-check-label" for="useEdge">
+                                    Use Edge (exploding 6s)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info" id="attackResultAlert" style="display: none;">
+                        <!-- Attack results will be displayed here -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="processAttack()">
+                    <i class="bi bi-dice-6"></i> Roll Attack
+                </button>
             </div>
         </div>
     </div>
@@ -502,6 +581,148 @@
                 alert('Error: ' + data.error);
             }
         });
+    }
+
+    function showAttackModal(attackerId, attackerName) {
+        document.getElementById('attackerId').value = attackerId;
+        document.getElementById('attackerName').textContent = attackerName;
+        document.getElementById('attackResultAlert').style.display = 'none';
+
+        // Reset form
+        document.getElementById('attackForm').reset();
+        document.getElementById('attackerId').value = attackerId; // Reset cleared this
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('attackModal'));
+        modal.show();
+    }
+
+    function processAttack() {
+        const attackerId = document.getElementById('attackerId').value;
+        const targetId = document.getElementById('targetSelect').value;
+        const attackPool = document.getElementById('attackPool').value;
+        const damageBase = document.getElementById('damageBase').value;
+        const weaponAP = document.getElementById('weaponAP').value;
+        const useEdge = document.getElementById('useEdge').checked;
+
+        if (!targetId) {
+            alert('Please select a target');
+            return;
+        }
+
+        const formData = new URLSearchParams();
+        formData.append('attacker_id', attackerId);
+        formData.append('target_id', targetId);
+        formData.append('attack_pool', attackPool);
+        formData.append('damage_base', damageBase);
+        formData.append('weapon_ap', weaponAP);
+        formData.append('use_edge', useEdge);
+
+        fetch('{% url "campaigns:combat_attack" campaign.pk session.pk encounter.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Display attack results
+                const resultAlert = document.getElementById('attackResultAlert');
+                const hitClass = data.hit ? 'alert-success' : 'alert-warning';
+                resultAlert.className = `alert ${hitClass}`;
+
+                let resultHTML = `
+                    <h6>${data.message}</h6>
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <strong>Attack Roll:</strong> ${data.attack_dice}<br>
+                            <strong>Hits:</strong> ${data.attack_hits}
+                            ${data.attack_glitch ? ' <span class="badge bg-warning text-dark">GLITCH!</span>' : ''}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Defense Roll:</strong> ${data.defense_dice}<br>
+                            <strong>Hits:</strong> ${data.defense_hits}
+                            ${data.defense_glitch ? ' <span class="badge bg-warning text-dark">GLITCH!</span>' : ''}
+                        </div>
+                    </div>
+                `;
+
+                if (data.hit && data.damage_dealt > 0) {
+                    resultHTML += `
+                        <div class="mt-2">
+                            <strong>Damage Dealt:</strong> ${data.damage_dealt} ${data.damage_type}
+                        </div>
+                    `;
+                }
+
+                resultAlert.innerHTML = resultHTML;
+                resultAlert.style.display = 'block';
+
+                // Update target's HP display
+                if (data.target) {
+                    updateParticipantDisplay(data.target);
+                }
+
+                // Auto-close modal after 3 seconds and reload
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing the attack');
+        });
+    }
+
+    function updateParticipantDisplay(targetData) {
+        const card = document.querySelector(`[data-participant-id="${targetData.id}"]`);
+        if (!card) return;
+
+        // Update HP bar
+        const hpFill = card.querySelector('.hp-fill');
+        const hpText = hpFill.querySelector('span');
+
+        hpFill.style.width = targetData.hp_percentage + '%';
+        hpText.textContent = targetData.current_hp + ' / ' + targetData.max_hp;
+
+        // Update color based on HP
+        hpFill.className = 'hp-fill';
+        if (targetData.hp_percentage >= 50) {
+            hpFill.classList.add('healthy');
+        } else if (targetData.hp_percentage >= 25) {
+            hpFill.classList.add('wounded');
+        } else {
+            hpFill.classList.add('critical');
+        }
+
+        // Update stats
+        const statsDiv = card.querySelector('.col-md-2 small');
+        if (statsDiv) {
+            statsDiv.innerHTML = `
+                <div>Physical: ${targetData.physical_damage}</div>
+                <div>Stun: ${targetData.stun_damage}</div>
+                <div>Edge: ${card.querySelector('.col-md-2 small div:nth-child(3)').textContent}</div>
+                <div>Armor: ${card.querySelector('.col-md-2 small div:nth-child(4)').textContent}</div>
+            `;
+        }
+
+        // Update condition
+        const conditionEl = card.querySelector('small strong');
+        if (conditionEl) {
+            conditionEl.textContent = targetData.condition;
+        }
+
+        // Mark as defeated if HP is 0
+        if (targetData.is_defeated) {
+            card.classList.add('defeated');
+        }
     }
 
     function showAddEffectModal(participantId, participantName) {

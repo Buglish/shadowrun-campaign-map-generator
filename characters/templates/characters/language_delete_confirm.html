@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Language - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirm Language Deletion
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to remove the following language from <strong>{{ character.name }}</strong>?</p>
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5>{{ language.name }}</h5>
+                            <p class="mb-0">
+                                <strong>Proficiency:</strong> {{ language.get_proficiency_display }}
+                                {% if language.notes %}
+                                    <br><strong>Notes:</strong> {{ language.notes|truncatewords:20 }}
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        This action cannot be undone.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Language
+                        </button>
+                        <a href="{% url 'characters:languages_manage' character.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

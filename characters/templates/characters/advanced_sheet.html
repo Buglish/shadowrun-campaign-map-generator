@@ -1,0 +1,747 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ character.name }} - Advanced Sheet{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        body {
+            font-size: 11pt;
+        }
+    }
+
+    .stat-box {
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        background: #f8f9fa;
+        margin-bottom: 10px;
+    }
+
+    .stat-box h6 {
+        margin-bottom: 5px;
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+
+    .stat-box .value {
+        font-size: 1.75rem;
+        font-weight: bold;
+        color: #212529;
+    }
+
+    .quick-ref {
+        background: #e9ecef;
+        border-left: 4px solid #0d6efd;
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+
+    .attribute-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+
+    .damage-track {
+        display: inline-flex;
+        gap: 3px;
+    }
+
+    .damage-box {
+        width: 25px;
+        height: 25px;
+        border: 2px solid #333;
+        display: inline-block;
+        text-align: center;
+        line-height: 21px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+
+    .damage-box.filled {
+        background: #dc3545;
+        color: white;
+    }
+
+    .condition-penalty {
+        background: #ffc107;
+        color: #000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header with Print Button -->
+    <div class="row no-print mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <a href="{% url 'characters:detail' character.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Character
+                    </a>
+                    <a href="{% url 'characters:edit' character.pk %}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                </div>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="bi bi-printer"></i> Print Character Sheet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Header -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body bg-dark text-white">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="mb-0">{{ character.name }}</h1>
+                            <p class="mb-0 lead">{{ character.get_archetype_display }} • {{ character.get_race_display }}</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1"><strong>Role:</strong> {{ character.get_role_display }}</p>
+                            <p class="mb-0"><strong>Current Location:</strong> {{ character.current_location|default:"Unknown" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Stats Row -->
+    <div class="row mb-3">
+        <!-- Attributes -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Attributes</h4>
+                </div>
+                <div class="card-body">
+                    <div class="attribute-grid">
+                        <div class="stat-box">
+                            <h6>Body</h6>
+                            <div class="value">{{ character.body }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Agility</h6>
+                            <div class="value">{{ character.agility }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Reaction</h6>
+                            <div class="value">{{ character.reaction }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Strength</h6>
+                            <div class="value">{{ character.strength }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Charisma</h6>
+                            <div class="value">{{ character.charisma }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Intuition</h6>
+                            <div class="value">{{ character.intuition }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Logic</h6>
+                            <div class="value">{{ character.logic }}</div>
+                        </div>
+                        <div class="stat-box">
+                            <h6>Willpower</h6>
+                            <div class="value">{{ character.willpower }}</div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Edge</h6>
+                                <div class="value">{{ character.edge }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Essence</h6>
+                                <div class="value">{{ character.essence }}</div>
+                            </div>
+                        </div>
+                        {% if character.magic > 0 %}
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Magic</h6>
+                                <div class="value">{{ character.magic }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if character.resonance > 0 %}
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Resonance</h6>
+                                <div class="value">{{ character.resonance }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Derived Stats & Quick Reference -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Derived Attributes & Quick Reference</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Initiative -->
+                    <div class="quick-ref">
+                        <h5 class="mb-2">Initiative</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="h3 mb-0">{{ character.initiative_base }} + {{ character.initiative_dice }}d6</span>
+                            <small class="text-muted">Reaction({{ character.reaction }}) + Intuition({{ character.intuition }})</small>
+                        </div>
+                    </div>
+
+                    <!-- Limits -->
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Physical Limit</h6>
+                                <div class="value">{{ character.physical_limit }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Mental Limit</h6>
+                                <div class="value">{{ character.mental_limit }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Social Limit</h6>
+                                <div class="value">{{ character.social_limit }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Defense & Soak -->
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Defense Pool</h6>
+                                <div class="value">{{ character.defense_pool_ranged }}</div>
+                                <small class="text-muted">Reaction + Intuition</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Armor</h6>
+                                <div class="value">{{ character.armor_rating }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Soak Pool</h6>
+                                <div class="value">{{ character.soak_pool }}</div>
+                                <small class="text-muted">Body + Armor</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Common Pools -->
+                    <div class="row">
+                        <div class="col-4">
+                            <small><strong>Composure:</strong> {{ character.composure }}</small>
+                        </div>
+                        <div class="col-4">
+                            <small><strong>Judge Intent:</strong> {{ character.judge_intentions }}</small>
+                        </div>
+                        <div class="col-4">
+                            <small><strong>Memory:</strong> {{ character.memory }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Condition Monitors -->
+    <div class="row mb-3">
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Physical Condition Monitor</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Current Damage:</strong> {{ character.physical_damage }} / {{ character.physical_monitor_max }}
+                    </div>
+                    <div class="damage-track mb-2">
+                        {% for i in "123456789012345678"|make_list %}
+                            {% if forloop.counter <= character.physical_monitor_max %}
+                                <div class="damage-box {% if forloop.counter <= character.physical_damage %}filled{% endif %}
+                                     {% if forloop.counter > 3 and forloop.counter <= 6 %} {% elif forloop.counter > 6 and forloop.counter <= 9 %} {% elif forloop.counter > 9 %} {% endif %}">
+                                    {% if forloop.counter == 4 or forloop.counter == 7 or forloop.counter == 10 %}-1{% endif %}
+                                    {% if forloop.counter == 11 %}-2{% endif %}
+                                    {% if forloop.counter == 12 %}-3{% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted">Overflow Threshold: {{ character.overflow_damage }} boxes (Monitor + Body)</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Stun Condition Monitor</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Current Damage:</strong> {{ character.stun_damage }} / {{ character.stun_monitor_max }}
+                    </div>
+                    <div class="damage-track mb-2">
+                        {% for i in "123456789012345678"|make_list %}
+                            {% if forloop.counter <= character.stun_monitor_max %}
+                                <div class="damage-box {% if forloop.counter <= character.stun_damage %}filled{% endif %}">
+                                    {% if forloop.counter == 4 or forloop.counter == 7 or forloop.counter == 10 %}-1{% endif %}
+                                    {% if forloop.counter == 11 %}-2{% endif %}
+                                    {% if forloop.counter == 12 %}-3{% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted">When Stun equals Physical Monitor, overflow converts to Physical damage</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Movement & Resources Row -->
+    <div class="row mb-3">
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Movement & Physical Capabilities</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Walk</h6>
+                                <div class="value">{{ character.walk_rate }}m</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Run</h6>
+                                <div class="value">{{ character.run_rate }}m</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-box">
+                                <h6>Sprint</h6>
+                                <div class="value" style="font-size: 1.2rem;">{{ character.sprint_rate }}m</div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="mb-1"><strong>Lifting/Carrying:</strong> {{ character.lifting_carrying }} kg (STR x 15)</p>
+                    <p class="mb-0"><strong>Essence Loss:</strong> {{ character.total_essence_loss|floatformat:2 }} ({{ character.essence }} remaining)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Resources & Karma</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Starting Resources:</strong> {{ character.starting_resources|default:"0"|intcomma }} ¥</p>
+                            <p class="mb-1"><strong>Current Resources:</strong> {{ character.current_resources|default:"0"|intcomma }} ¥</p>
+                            <p class="mb-0"><strong>Equipment Value:</strong> {{ character.total_equipment_value|intcomma }} ¥</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Karma Total:</strong> {{ character.karma_total }}</p>
+                            <p class="mb-1"><strong>Karma Spent:</strong> {{ character.karma_spent }}</p>
+                            <p class="mb-1"><strong>Karma Remaining:</strong> {{ character.karma_remaining }}</p>
+                            <p class="mb-0"><strong>Qualities Impact:</strong> {{ character.total_qualities_karma }}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="mb-0">
+                        <strong>Lifestyle:</strong> {{ character.get_lifestyle_display }} |
+                        <strong>Street Cred:</strong> {{ character.street_cred }} |
+                        <strong>Notoriety:</strong> {{ character.notoriety }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skills Section -->
+    {% with skills_by_category=character.skills.all|dictsort:"skill.category" %}
+    {% if skills_by_category %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Skills</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Skill</th>
+                                    <th>Category</th>
+                                    <th>Rating</th>
+                                    <th>Attribute</th>
+                                    <th>Dice Pool</th>
+                                    <th>Specialization</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for char_skill in skills_by_category %}
+                                <tr>
+                                    <td><strong>{{ char_skill.skill.name }}</strong></td>
+                                    <td>{{ char_skill.skill.get_category_display }}</td>
+                                    <td class="text-center">{{ char_skill.rating }}</td>
+                                    <td>{{ char_skill.skill.get_linked_attribute_display }}</td>
+                                    <td class="text-center"><span class="badge bg-success">{{ char_skill.dice_pool }}</span></td>
+                                    <td>{{ char_skill.specialization|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Qualities, Contacts, Languages Row -->
+    <div class="row mb-3">
+        <!-- Qualities -->
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Qualities</h5>
+                </div>
+                <div class="card-body">
+                    {% with qualities=character.qualities.all %}
+                    {% if qualities %}
+                        <h6 class="text-success">Positive</h6>
+                        <ul class="small mb-3">
+                            {% for cq in qualities %}
+                                {% if cq.quality.quality_type == 'positive' %}
+                                    <li><strong>{{ cq.quality.name }}</strong> ({{ cq.quality.karma_cost }} karma)</li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+
+                        <h6 class="text-danger">Negative</h6>
+                        <ul class="small">
+                            {% for cq in qualities %}
+                                {% if cq.quality.quality_type == 'negative' %}
+                                    <li><strong>{{ cq.quality.name }}</strong> (+{{ cq.quality.karma_cost }} karma)</li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No qualities</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contacts -->
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Contacts</h5>
+                </div>
+                <div class="card-body">
+                    {% with contacts=character.contacts.all %}
+                    {% if contacts %}
+                        <ul class="small mb-0">
+                            {% for contact in contacts %}
+                            <li>
+                                <strong>{{ contact.name }}</strong> (C{{ contact.connection }}/L{{ contact.loyalty }})
+                                {% if contact.archetype %}<br><em class="text-muted">{{ contact.archetype }}</em>{% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No contacts</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Languages -->
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Languages</h5>
+                </div>
+                <div class="card-body">
+                    {% with languages=character.languages.all %}
+                    {% if languages %}
+                        <ul class="small mb-0">
+                            {% for lang in languages %}
+                            <li><strong>{{ lang.name }}:</strong> {{ lang.get_proficiency_display }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No languages</p>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment -->
+    {% with equipment=character.equipment.all %}
+    {% if equipment %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0">Equipment & Gear</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Category</th>
+                                    <th>Qty</th>
+                                    <th>Stats</th>
+                                    <th>Essence</th>
+                                    <th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in equipment %}
+                                <tr>
+                                    <td><strong>{{ item.gear.name }}</strong></td>
+                                    <td>{{ item.gear.get_category_display }}</td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td>
+                                        {% if item.gear.damage %}DMG: {{ item.gear.damage }} {% endif %}
+                                        {% if item.gear.armor_penetration %}AP: {{ item.gear.armor_penetration }} {% endif %}
+                                        {% if item.gear.armor_rating %}Armor: {{ item.gear.armor_rating }} {% endif %}
+                                        {% if item.gear.firing_mode %}Mode: {{ item.gear.firing_mode }} {% endif %}
+                                        {% if item.gear.recoil_compensation %}RC: {{ item.gear.recoil_compensation }}{% endif %}
+                                    </td>
+                                    <td class="text-center">{{ item.gear.essence_cost }}</td>
+                                    <td class="text-end">{{ item.total_cost|intcomma }} ¥</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-secondary">
+                                    <td colspan="5" class="text-end"><strong>Total Value:</strong></td>
+                                    <td class="text-end"><strong>{{ character.total_equipment_value|intcomma }} ¥</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Magic Systems -->
+    {% with spells=character.spells.all adept_powers=character.adept_powers.all complex_forms=character.complex_forms.all %}
+    {% if spells or adept_powers or complex_forms %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Magic & Resonance Abilities</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Spells -->
+                    {% if spells %}
+                    <h5 class="mb-2">Spells</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Spell</th>
+                                    <th>Category</th>
+                                    <th>Type</th>
+                                    <th>Range</th>
+                                    <th>Duration</th>
+                                    <th>Drain</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for char_spell in spells %}
+                                <tr>
+                                    <td><strong>{{ char_spell.spell.name }}</strong></td>
+                                    <td>{{ char_spell.spell.get_category_display }}</td>
+                                    <td>{{ char_spell.spell.get_spell_type_display }}</td>
+                                    <td>{{ char_spell.spell.get_range_type_display }}</td>
+                                    <td>{{ char_spell.spell.get_duration_display }}</td>
+                                    <td>{{ char_spell.spell.drain }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    <!-- Adept Powers -->
+                    {% if adept_powers %}
+                    <h5 class="mb-2">Adept Powers</h5>
+                    <ul class="mb-4">
+                        {% for power in adept_powers %}
+                        <li><strong>{{ power.power.name }}</strong> (Level {{ power.level }}) — {{ power.power.cost }} PP</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    <!-- Complex Forms -->
+                    {% if complex_forms %}
+                    <h5 class="mb-2">Complex Forms</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Form</th>
+                                    <th>Target</th>
+                                    <th>Duration</th>
+                                    <th>Fading</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form in complex_forms %}
+                                <tr>
+                                    <td><strong>{{ form.form.name }}</strong></td>
+                                    <td>{{ form.form.get_target_display }}</td>
+                                    <td>{{ form.form.get_duration_display }}</td>
+                                    <td>{{ form.form.fading }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Background & Description -->
+    <div class="row mb-3">
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Physical Description</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            {% if character.age %}<p class="mb-1"><strong>Age:</strong> {{ character.age }}</p>{% endif %}
+                            {% if character.sex %}<p class="mb-1"><strong>Sex:</strong> {{ character.sex }}</p>{% endif %}
+                            {% if character.height %}<p class="mb-1"><strong>Height:</strong> {{ character.height }}</p>{% endif %}
+                            {% if character.weight %}<p class="mb-1"><strong>Weight:</strong> {{ character.weight }}</p>{% endif %}
+                        </div>
+                        <div class="col-6">
+                            {% if character.eyes %}<p class="mb-1"><strong>Eyes:</strong> {{ character.eyes }}</p>{% endif %}
+                            {% if character.hair %}<p class="mb-1"><strong>Hair:</strong> {{ character.hair }}</p>{% endif %}
+                            {% if character.skin %}<p class="mb-1"><strong>Skin:</strong> {{ character.skin }}</p>{% endif %}
+                        </div>
+                    </div>
+                    {% if character.distinguishing_features %}
+                    <hr>
+                    <p class="mb-0"><strong>Distinguishing Features:</strong></p>
+                    <p class="small mb-0">{{ character.distinguishing_features }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Background & History</h5>
+                </div>
+                <div class="card-body">
+                    {% if character.birthplace or character.raised_location %}
+                    <p class="small mb-1">
+                        {% if character.birthplace %}<strong>Born:</strong> {{ character.birthplace }}{% endif %}
+                        {% if character.raised_location %} | <strong>Raised:</strong> {{ character.raised_location }}{% endif %}
+                    </p>
+                    {% endif %}
+                    {% if character.background %}
+                    <hr>
+                    <p class="small mb-0">{{ character.background|truncatewords:50 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Priority System -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Priority System</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col">
+                            <strong>Metatype:</strong> {{ character.get_metatype_priority_display }}
+                        </div>
+                        <div class="col">
+                            <strong>Attributes:</strong> {{ character.get_attributes_priority_display }}
+                        </div>
+                        <div class="col">
+                            <strong>Magic/Resonance:</strong> {{ character.get_magic_priority_display }}
+                        </div>
+                        <div class="col">
+                            <strong>Skills:</strong> {{ character.get_skills_priority_display }}
+                        </div>
+                        <div class="col">
+                            <strong>Resources:</strong> {{ character.get_resources_priority_display }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ character.name }} - Languages{% endblock %}
+
+{% block extra_css %}
+<style>
+    .language-card {
+        border-left: 4px solid #6f42c1;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+
+    .language-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateX(2px);
+    }
+
+    .proficiency-badge {
+        font-size: 1em;
+        font-weight: bold;
+        padding: 5px 12px;
+        border-radius: 4px;
+        color: white;
+        display: inline-block;
+        min-width: 60px;
+        text-align: center;
+    }
+
+    .proficiency-native {
+        background-color: #28a745;
+    }
+
+    .proficiency-fluent {
+        background-color: #17a2b8;
+    }
+
+    .proficiency-conversational {
+        background-color: #ffc107;
+        color: #333;
+    }
+
+    .proficiency-basic {
+        background-color: #6c757d;
+    }
+
+    .no-languages-message {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-translate"></i>
+                {{ character.name }} - Languages
+            </h2>
+            <p class="text-muted">Manage your character's known languages</p>
+        </div>
+        <div>
+            <a href="{% url 'characters:detail' character.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Character
+            </a>
+            <a href="{% url 'characters:language_add' character.pk %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Language
+            </a>
+        </div>
+    </div>
+
+    <!-- Languages List -->
+    {% if languages %}
+        {% for language in languages %}
+        <div class="card language-card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <!-- Proficiency Badge -->
+                    <div class="col-auto">
+                        <span class="proficiency-badge proficiency-{{ language.proficiency }}" title="Proficiency Level">
+                            {{ language.get_proficiency_display }}
+                        </span>
+                    </div>
+
+                    <!-- Language Info -->
+                    <div class="col">
+                        <h5 class="mb-1">{{ language.name }}</h5>
+                        {% if language.notes %}
+                            <small class="text-muted">
+                                <i class="bi bi-sticky"></i> {{ language.notes|truncatewords:30 }}
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="col-auto">
+                        <a href="{% url 'characters:language_edit' character.pk language.pk %}"
+                           class="btn btn-sm btn-outline-primary" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'characters:language_delete' character.pk language.pk %}"
+                           class="btn btn-sm btn-outline-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body no-languages-message">
+                <i class="bi bi-translate" style="font-size: 3em;"></i>
+                <h4 class="mt-3">No Languages Yet</h4>
+                <p class="text-muted">Add languages to track which languages your character can speak</p>
+                <a href="{% url 'characters:language_add' character.pk %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Add Your First Language
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Language Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Total Languages:</strong> {{ languages.count }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Native:</strong>
+                    {{ languages|filter:proficiency='native'|length }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Fluent:</strong>
+                    {{ languages|filter:proficiency='fluent'|length }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Learning:</strong>
+                    {{ languages|filter:proficiency='conversational'|length|add:languages|filter:proficiency='basic'|length }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Proficiency Levels Guide</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <ul class="list-unstyled small">
+                        <li><strong><span class="proficiency-badge proficiency-native">Native</span>:</strong> First language, speaks perfectly</li>
+                        <li><strong><span class="proficiency-badge proficiency-fluent">Fluent</span>:</strong> Professional level, can handle complex topics</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul class="list-unstyled small">
+                        <li><strong><span class="proficiency-badge proficiency-conversational">Conversational</span>:</strong> Can hold basic dialogue and common topics</li>
+                        <li><strong><span class="proficiency-badge proficiency-basic">Basic</span>:</strong> Simple phrases, limited vocabulary</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

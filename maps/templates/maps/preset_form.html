@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Map Generation Preset{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if action == 'Create' %}plus-circle{% else %}pencil{% endif %}"></i>
+                        {{ action }} Map Generation Preset
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% crispy form %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Preset
+                            </button>
+                            <a href="{% url 'maps:preset_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Preset Configuration Guide</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Generation Algorithms</h6>
+                            <ul class="list-unstyled small">
+                                <li><strong>BSP:</strong> Room-and-corridor layouts (buildings, dungeons)</li>
+                                <li><strong>Cellular Automata:</strong> Organic caves and natural structures</li>
+                                <li><strong>Random Walk:</strong> Winding tunnels and passages</li>
+                                <li><strong>Maze:</strong> Complex mazes and puzzles</li>
+                                <li><strong>Random:</strong> Simple distribution (outdoor areas)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Map Types</h6>
+                            <ul class="list-unstyled small">
+                                <li><strong>Urban:</strong> Streets, sidewalks, buildings</li>
+                                <li><strong>Wilderness:</strong> Grass, forests, water</li>
+                                <li><strong>Corporate:</strong> Floors, walls, doors, elevators</li>
+                                <li><strong>Underground:</strong> Tunnels, caves, passages</li>
+                                <li><strong>Mixed:</strong> Combination of multiple terrains</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="mb-0 small text-muted">
+                        <strong>Tip:</strong> Use custom parameters (JSON) for algorithm-specific settings like min_room_size, max_room_size (BSP), iterations (Cellular Automata), etc.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

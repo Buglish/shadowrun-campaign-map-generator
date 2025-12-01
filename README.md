@@ -249,7 +249,7 @@ venv/bin/pip install mysqlclient
 
 6. **Create the database**
 ```bash
-mysql -u root -prootpassword -e "CREATE DATABASE IF NOT EXISTS shadowrun_campaign CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -pyour-password-here -e "CREATE DATABASE IF NOT EXISTS shadowrun_campaign CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 Note: No space between `-p` and your password.
 
@@ -620,27 +620,95 @@ The campaign system provides comprehensive tools for organizing and running Shad
   - [x] Integration with combat log
   - [x] Full admin interface for effect management
 
+- [x] Character Magic Systems UI:
+  - [x] Spell management for mages and shamans (full CRUD operations)
+  - [x] Adept power management for adepts with level tracking
+  - [x] Complex form management for technomancers
+  - [x] Organized by category with detailed information display
+  - [x] Management links integrated into character detail page
+  - [x] Help guides for each magic system
+
+- [x] Map Sharing Controls:
+  - [x] UI to share maps with specific users via multi-select checkboxes
+  - [x] Works in combination with public map setting
+  - [x] User filtering to exclude map owner from selection
+  - [x] Integration with existing map permissions system
+
+- [x] Session Objectives Management:
+  - [x] Full CRUD operations for session objectives
+  - [x] Objective completion tracking with checkboxes
+  - [x] Real-time AJAX updates for objective status
+  - [x] Visual progress bar showing completion percentage
+  - [x] GM-only editing with player viewing permissions
+  - [x] Integration with session detail page
+
+- [x] Character Contacts Management:
+  - [x] Full CRUD operations for character contacts
+  - [x] Contact rating system (Connection 1-12, Loyalty 1-6)
+  - [x] Archetype/profession tracking
+  - [x] Description and notes fields
+  - [x] Management UI with summary statistics
+  - [x] Integration with character detail page
+  - [x] Help guides for rating scales
+
+- [x] Character Languages System:
+  - [x] Full CRUD operations for character languages
+  - [x] Four proficiency levels (Native, Fluent, Conversational, Basic)
+  - [x] Language name and notes tracking
+  - [x] Management UI with proficiency badges and summary statistics
+  - [x] Integration with character detail page
+  - [x] Help guides for proficiency levels and common Shadowrun languages
+  - [x] Color-coded proficiency indicators
+
+- [x] Procedural Cover System for Map Generation:
+  - [x] Create categorized cover objects (furniture, vehicles, equipment) that spawn during map generation
+  - [x] Three cover levels with visual indicators:
+    - Light Cover (shield icon 🛡) - +2 to defense, doesn't block movement/vision
+    - Medium Cover (shield icon 🛡️) - +4 to defense, doesn't block movement/vision
+    - Heavy Cover (shield icon 🛡) - +6 to defense, blocks movement and vision
+  - [x] Context-aware placement based on map type:
+    - Urban: trash cans, cars, barriers, dumpsters
+    - Corporate: desks, filing cabinets, server racks
+    - Wilderness: bushes, boulders, trees, rock formations
+    - Underground: pipes, rubble, concrete blocks, collapsed walls
+  - [x] Configurable cover density parameter (0.0-0.5) in map generation form
+  - [x] Automatic cover placement integrated into all generation algorithms
+  - [x] Cover properties stored in MapObject stats (cover_level, defense_bonus)
+
+- [x] Map Generation Presets System:
+  - [x] Full CRUD operations for generation presets
+  - [x] Save and load favorite map generation configurations
+  - [x] Preset parameters: dimensions, map type, algorithm, densities, custom parameters
+  - [x] Public/private preset sharing system
+  - [x] Load preset directly into generation form with one click
+  - [x] Preset list showing user's own and public presets
+  - [x] Integration with map generation interface
+  - [x] Quick access from generation page
+
+- [x] Character Sheet Advanced View:
+  - [x] Comprehensive advanced character sheet with all calculated stats
+  - [x] Print-friendly layout optimized for reference
+  - [x] Additional calculated properties in Character model:
+    - [x] Overflow damage tracking
+    - [x] Movement rates (walk, run, sprint)
+    - [x] Composure, judge intentions, and memory pools
+    - [x] Lifting/carrying capacity
+    - [x] Defense pools (ranged, melee)
+    - [x] Soak pool (Body + Armor)
+    - [x] Total equipment value
+    - [x] Total qualities karma impact
+    - [x] Total essence loss
+  - [x] Visual damage track displays for physical and stun monitors
+  - [x] Organized stat boxes with color-coded sections
+  - [x] Quick reference panels for combat and common actions
+  - [x] Complete equipment listing with stats and totals
+  - [x] Full skills table with dice pools
+  - [x] Magic systems display (spells, adept powers, complex forms)
+  - [x] Accessible via "Advanced Sheet" button from character detail page
+
 ### In Progress
 
 ### Planned
-
-#### High Priority Features
-- [ ] Session Objectives Management - Create and track specific session goals with completion status
-- [ ] Map Objects/Tokens System - Place and manage interactive objects (NPCs, enemies, items) on maps
-- [ ] Character Magic Systems UI:
-  - [ ] Spell management for mages and shamans
-  - [ ] Adept power management for adepts
-  - [ ] Complex form management for technomancers
-- [ ] Character Skills Management - Add, edit, and manage character skills through UI
-- [ ] Map Sharing Controls - UI to share maps with specific users
-
-#### Medium Priority Features
-- [ ] Character Contacts Management - Add and track contacts with connection/loyalty ratings
-- [ ] Character Languages System - Manage character languages and proficiency levels
-- [ ] Map Generation Presets - Save and load favorite map generation configurations
-- [ ] Fog of War System - Hide and reveal map tiles for players
-- [ ] Map Deletion UI - Delete maps through the interface
-- [ ] Character Sheet Advanced View - Comprehensive character sheet with all calculated stats
 
 #### Future Enhancements
 - [ ] Real-time collaborative map editing

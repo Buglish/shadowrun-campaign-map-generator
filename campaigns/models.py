@@ -410,6 +410,64 @@ class CombatParticipant(models.Model):
         else:
             return "Critical"
 
+    def apply_damage(self, damage, damage_type='physical'):
+        """
+        Apply damage to this participant
+
+        Args:
+            damage: Amount of damage to apply (positive number)
+            damage_type: 'physical' or 'stun'
+
+        Returns:
+            Dict with damage applied and whether participant was defeated
+        """
+        if damage_type == 'physical':
+            self.physical_damage += damage
+            self.current_hp = max(0, self.current_hp - damage)
+        elif damage_type == 'stun':
+            self.stun_damage += damage
+            self.current_hp = max(0, self.current_hp - damage)
+
+        # Check if defeated
+        if self.current_hp <= 0:
+            self.is_defeated = True
+            self.is_active = False
+
+        self.save()
+
+        return {
+            'damage_applied': damage,
+            'damage_type': damage_type,
+            'current_hp': self.current_hp,
+            'is_defeated': self.is_defeated
+        }
+
+    def heal(self, amount):
+        """
+        Heal this participant
+
+        Args:
+            amount: Amount of HP to restore
+
+        Returns:
+            Dict with healing applied
+        """
+        old_hp = self.current_hp
+        self.current_hp = min(self.max_hp, self.current_hp + amount)
+        actual_healing = self.current_hp - old_hp
+
+        # Reset defeated status if healed above 0
+        if self.current_hp > 0 and self.is_defeated:
+            self.is_defeated = False
+            self.is_active = True
+
+        self.save()
+
+        return {
+            'healing_applied': actual_healing,
+            'current_hp': self.current_hp
+        }
+
 
 class CombatEffect(models.Model):
     """Status effects applied to combat participants"""

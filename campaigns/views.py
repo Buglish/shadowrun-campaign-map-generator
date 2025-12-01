@@ -5,8 +5,9 @@ from django.db.models import Q
 from django.http import JsonResponse
 import logging
 from .models import Campaign, Session, SessionObjective, CombatEncounter, CombatParticipant, CombatEffect, CombatLog
-from .forms import CampaignForm, SessionForm, CombatEncounterForm, CombatParticipantForm, CombatEffectForm
-from characters.models import Character
+from .forms import CampaignForm, SessionForm, SessionObjectiveForm, CombatEncounterForm, CombatParticipantForm, CombatEffectForm
+from characters.models import Character, Gear
+from dice.utils import roll_shadowrun_dice, calculate_opposed_test, format_dice_results
 
 logger = logging.getLogger(__name__)
 
@@ -480,6 +481,154 @@ def combat_update_hp(request, campaign_pk, session_pk, encounter_pk, participant
 
 
 @login_required
+def combat_attack(request, campaign_pk, session_pk, encounter_pk):
+    """
+    Process an attack between combat participants (AJAX)
+
+    POST parameters:
+        - attacker_id: ID of attacking participant
+        - target_id: ID of target participant
+        - attack_pool: Number of dice in attack pool
+        - damage_base: Base damage value (e.g., "8P" or "6S")
+        - weapon_ap: Armor penetration value
+        - use_edge: Whether attacker is using Edge
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+    campaign = get_object_or_404(Campaign, pk=campaign_pk)
+    encounter = get_object_or_404(CombatEncounter, pk=encounter_pk)
+
+    # Only GM can process attacks
+    if campaign.game_master != request.user:
+        return JsonResponse({'success': False, 'error': 'Only GM can process attacks'})
+
+    try:
+        attacker_id = int(request.POST.get('attacker_id'))
+        target_id = int(request.POST.get('target_id'))
+        attack_pool = int(request.POST.get('attack_pool', 0))
+        damage_base = request.POST.get('damage_base', '0P')  # e.g., "8P" or "6S"
+        weapon_ap = int(request.POST.get('weapon_ap', 0))
+        use_edge = request.POST.get('use_edge', 'false').lower() == 'true'
+
+        attacker = get_object_or_404(CombatParticipant, pk=attacker_id)
+        target = get_object_or_404(CombatParticipant, pk=target_id)
+
+        # Parse damage value and type
+        damage_value = int(''.join(filter(str.isdigit, damage_base)) or 0)
+        damage_type = 'stun' if 'S' in damage_base.upper() else 'physical'
+
+        # Roll attack dice
+        attack_roll = roll_shadowrun_dice(attack_pool, edge_used=use_edge)
+        attack_hits = attack_roll['total_hits']
+
+        # Calculate defense pool (Reaction + Intuition + dodge modifiers)
+        # For now, use dodge_pool if set, otherwise default to half the target's initiative
+        defense_pool = target.dodge_pool if target.dodge_pool > 0 else max(1, target.initiative // 2)
+
+        # Roll defense dice
+        defense_roll = roll_shadowrun_dice(defense_pool)
+        defense_hits = defense_roll['total_hits']
+
+        # Calculate opposed test result
+        opposed_result = calculate_opposed_test(attack_hits, defense_hits)
+        net_hits = opposed_result['net_hits']
+        hit_success = opposed_result['attacker_success']
+
+        # Calculate damage if attack hit
+        damage_dealt = 0
+        if hit_success:
+            # Base damage + net hits - (armor - AP)
+            effective_armor = max(0, target.armor + weapon_ap)  # AP is negative, so we add it
+            damage_dealt = max(0, damage_value + net_hits - effective_armor)
+
+            # Apply damage to target
+            if damage_dealt > 0:
+                result = target.apply_damage(damage_dealt, damage_type)
+
+                # Log damage
+                CombatLog.log_event(
+                    encounter=encounter,
+                    event_type='damage',
+                    description=f'{attacker.name} hits {target.name} for {damage_dealt} {damage_type} damage ({damage_value} base + {net_hits} net hits - {effective_armor} armor)',
+                    actor=attacker,
+                    target=target,
+                    data={
+                        'attack_hits': attack_hits,
+                        'defense_hits': defense_hits,
+                        'net_hits': net_hits,
+                        'damage_base': damage_value,
+                        'damage_dealt': damage_dealt,
+                        'damage_type': damage_type,
+                        'weapon_ap': weapon_ap,
+                        'target_armor': target.armor,
+                        'attack_dice': attack_roll['dice_results'],
+                        'defense_dice': defense_roll['dice_results']
+                    }
+                )
+
+                # Check if target was defeated
+                if result['is_defeated']:
+                    CombatLog.log_event(
+                        encounter=encounter,
+                        event_type='defeated',
+                        description=f'{target.name} has been defeated!',
+                        target=target
+                    )
+        else:
+            # Attack missed
+            CombatLog.log_event(
+                encounter=encounter,
+                event_type='attack',
+                description=f'{attacker.name} attacks {target.name} but misses! (Attack: {attack_hits} hits, Defense: {defense_hits} hits)',
+                actor=attacker,
+                target=target,
+                data={
+                    'attack_hits': attack_hits,
+                    'defense_hits': defense_hits,
+                    'result': 'miss',
+                    'attack_dice': attack_roll['dice_results'],
+                    'defense_dice': defense_roll['dice_results']
+                }
+            )
+
+        # Format dice results for display
+        attack_dice_display = format_dice_results(attack_roll['dice_results'], len(attack_roll['original_dice']))
+        defense_dice_display = format_dice_results(defense_roll['dice_results'], len(defense_roll['original_dice']))
+
+        return JsonResponse({
+            'success': True,
+            'hit': hit_success,
+            'attack_hits': attack_hits,
+            'defense_hits': defense_hits,
+            'net_hits': net_hits,
+            'damage_dealt': damage_dealt,
+            'damage_type': damage_type,
+            'target': {
+                'id': target.id,
+                'name': target.name,
+                'current_hp': target.current_hp,
+                'max_hp': target.max_hp,
+                'hp_percentage': target.hp_percentage,
+                'physical_damage': target.physical_damage,
+                'stun_damage': target.stun_damage,
+                'condition': target.condition,
+                'is_defeated': target.is_defeated
+            },
+            'attack_dice': attack_dice_display,
+            'defense_dice': defense_dice_display,
+            'attack_glitch': attack_roll['is_glitch'],
+            'defense_glitch': defense_roll['is_glitch'],
+            'message': f'{attacker.name} {"hits" if hit_success else "misses"} {target.name}! Attack: {attack_hits} hits, Defense: {defense_hits} hits' +
+                      (f', Damage: {damage_dealt} {damage_type}' if damage_dealt > 0 else '')
+        })
+
+    except Exception as e:
+        logger.error(f"Error processing attack: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
 def combat_start(request, campaign_pk, session_pk, encounter_pk):
     """Start combat encounter (AJAX)"""
     if request.method != 'POST':
@@ -674,5 +823,136 @@ def combat_effect_remove(request, campaign_pk, session_pk, encounter_pk, effect_
         )
 
         return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# =========================
+# SESSION OBJECTIVES MANAGEMENT
+# =========================
+
+@login_required
+def session_objective_add(request, campaign_pk, session_pk):
+    """Add a new objective to a session"""
+    try:
+        campaign = get_object_or_404(Campaign, pk=campaign_pk)
+        session = get_object_or_404(Session, pk=session_pk, campaign=campaign)
+
+        # Check if user is GM
+        if campaign.game_master != request.user:
+            messages.error(request, 'Only the GM can manage session objectives.')
+            return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+        if request.method == 'POST':
+            form = SessionObjectiveForm(request.POST)
+            if form.is_valid():
+                objective = form.save(commit=False)
+                objective.session = session
+                objective.save()
+                messages.success(request, f'Objective added successfully!')
+                return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+        else:
+            form = SessionObjectiveForm()
+
+        context = {
+            'form': form,
+            'campaign': campaign,
+            'session': session,
+            'action': 'Add',
+        }
+        return render(request, 'campaigns/objective_form.html', context)
+    except Exception as e:
+        logger.error(f"Error in session_objective_add: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while adding objective.')
+        return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+
+@login_required
+def session_objective_edit(request, campaign_pk, session_pk, objective_pk):
+    """Edit a session objective"""
+    try:
+        campaign = get_object_or_404(Campaign, pk=campaign_pk)
+        session = get_object_or_404(Session, pk=session_pk, campaign=campaign)
+        objective = get_object_or_404(SessionObjective, pk=objective_pk, session=session)
+
+        # Check if user is GM
+        if campaign.game_master != request.user:
+            messages.error(request, 'Only the GM can manage session objectives.')
+            return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+        if request.method == 'POST':
+            form = SessionObjectiveForm(request.POST, instance=objective)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f'Objective updated successfully!')
+                return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+        else:
+            form = SessionObjectiveForm(instance=objective)
+
+        context = {
+            'form': form,
+            'campaign': campaign,
+            'session': session,
+            'objective': objective,
+            'action': 'Edit',
+        }
+        return render(request, 'campaigns/objective_form.html', context)
+    except Exception as e:
+        logger.error(f"Error in session_objective_edit: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while editing objective.')
+        return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+
+@login_required
+def session_objective_delete(request, campaign_pk, session_pk, objective_pk):
+    """Delete a session objective"""
+    try:
+        campaign = get_object_or_404(Campaign, pk=campaign_pk)
+        session = get_object_or_404(Session, pk=session_pk, campaign=campaign)
+        objective = get_object_or_404(SessionObjective, pk=objective_pk, session=session)
+
+        # Check if user is GM
+        if campaign.game_master != request.user:
+            messages.error(request, 'Only the GM can manage session objectives.')
+            return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+        if request.method == 'POST':
+            objective_desc = objective.description
+            objective.delete()
+            messages.success(request, f'Objective "{objective_desc}" deleted successfully!')
+            return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+        context = {
+            'campaign': campaign,
+            'session': session,
+            'objective': objective,
+        }
+        return render(request, 'campaigns/objective_delete_confirm.html', context)
+    except Exception as e:
+        logger.error(f"Error in session_objective_delete: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while deleting objective.')
+        return redirect('campaigns:session_detail', campaign_pk=campaign_pk, session_pk=session_pk)
+
+
+@login_required
+def session_objective_toggle(request, campaign_pk, session_pk, objective_pk):
+    """Toggle objective completion status via AJAX"""
+    try:
+        campaign = get_object_or_404(Campaign, pk=campaign_pk)
+        session = get_object_or_404(Session, pk=session_pk, campaign=campaign)
+        objective = get_object_or_404(SessionObjective, pk=objective_pk, session=session)
+
+        # Check if user is GM or player in campaign
+        if campaign.game_master != request.user and request.user not in campaign.players.all():
+            return JsonResponse({'success': False, 'error': 'Permission denied'})
+
+        objective.is_completed = not objective.is_completed
+        objective.save()
+
+        return JsonResponse({
+            'success': True,
+            'is_completed': objective.is_completed,
+            'objective_id': objective.pk,
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})

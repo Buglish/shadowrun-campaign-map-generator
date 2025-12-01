@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Preset{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirm Preset Deletion
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the following map generation preset?</p>
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5>{{ preset.name }}</h5>
+                            <p class="mb-0">
+                                {% if preset.description %}
+                                    <strong>Description:</strong> {{ preset.description|truncatewords:30 }}<br>
+                                {% endif %}
+                                <strong>Dimensions:</strong> {{ preset.width }}x{{ preset.height }}<br>
+                                <strong>Map Type:</strong> {{ preset.get_map_type_display }}<br>
+                                <strong>Algorithm:</strong> {{ preset.generation_algorithm|title }}<br>
+                                {% if preset.is_public %}
+                                    <strong>Visibility:</strong> Public<br>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        This action cannot be undone. The preset will be permanently deleted.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Yes, Delete Preset
+                        </button>
+                        <a href="{% url 'maps:preset_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

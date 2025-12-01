@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Complex Form - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if action == 'Add' %}plus-circle{% else %}pencil{% endif %}"></i>
+                        {{ action }} Complex Form for {{ character.name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        {% if character_form %}
+                        <div class="alert alert-info mt-3">
+                            <strong>Complex Form Details:</strong><br>
+                            <strong>Target:</strong> {{ character_form.form.get_target_display }}<br>
+                            <strong>Duration:</strong> {{ character_form.form.get_duration_display }}<br>
+                            <strong>Fading:</strong> {{ character_form.form.fading }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Complex Form
+                            </button>
+                            <a href="{% url 'characters:complex_forms_manage' character.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Complex Form Guide</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Complex Forms:</strong> Digital abilities that technomancers use to interact with the Matrix.</p>
+                    <p><strong>Targets:</strong></p>
+                    <ul class="mb-3">
+                        <li><strong>Device:</strong> Affects physical devices</li>
+                        <li><strong>File:</strong> Affects digital files and data</li>
+                        <li><strong>Persona:</strong> Affects Matrix personas</li>
+                        <li><strong>Sprite:</strong> Affects sprites in the Matrix</li>
+                    </ul>
+                    <p><strong>Fading:</strong> Mental damage taken when threading the form. Higher Level = higher fading.</p>
+                    <p class="mb-0 small text-muted">
+                        Your Resonance rating limits the maximum Level you can thread at.
+                        Current Resonance Rating: <strong>{{ character.resonance }}</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Language - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if action == 'Add' %}plus-circle{% else %}pencil{% endif %}"></i>
+                        {{ action }} Language for {{ character.name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Language
+                            </button>
+                            <a href="{% url 'characters:languages_manage' character.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Language Proficiency Guide</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Proficiency Levels</h6>
+                    <ul class="list-unstyled small mb-3">
+                        <li><strong>Native:</strong> First language, speaks perfectly with full cultural understanding</li>
+                        <li><strong>Fluent:</strong> Professional level, can handle complex topics and nuanced conversation</li>
+                        <li><strong>Conversational:</strong> Can hold basic dialogue, understand common topics</li>
+                        <li><strong>Basic:</strong> Simple phrases, limited vocabulary, heavy accent</li>
+                    </ul>
+                    <hr>
+                    <h6>Common Shadowrun Languages</h6>
+                    <p class="mb-0 small text-muted">
+                        <strong>Human:</strong> English, Japanese, Spanish, Mandarin, Russian, German<br>
+                        <strong>Metahuman:</strong> Or'zet (Ork), Sperethiel (Elvish), Dwarven<br>
+                        <strong>Other:</strong> Cityspeak, Street Slang, Aztlaner, Sioux, Lakota, ASL (American Sign Language)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

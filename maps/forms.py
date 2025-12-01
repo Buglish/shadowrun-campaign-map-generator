@@ -9,15 +9,31 @@ from .models import Map, MapTile, MapObject, MapGenerationPreset
 class MapForm(forms.ModelForm):
     """Form for creating and editing maps"""
 
+    shared_with = forms.ModelMultipleChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text='Select specific users to share this map with (in addition to public setting)'
+    )
+
     class Meta:
         model = Map
-        fields = ['name', 'description', 'width', 'height', 'tile_size', 'map_type', 'is_public']
+        fields = ['name', 'description', 'width', 'height', 'tile_size', 'map_type', 'is_public', 'shared_with']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
+        # Extract the current user from kwargs
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        # Filter users to exclude the current map owner
+        if user:
+            self.fields['shared_with'].queryset = User.objects.exclude(pk=user.pk).order_by('username')
+        else:
+            self.fields['shared_with'].queryset = User.objects.all().order_by('username')
+
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Field('name', css_class='form-control'),
@@ -31,12 +47,28 @@ class MapForm(forms.ModelForm):
                 Column('map_type', css_class='form-group col-md-6'),
                 Column('is_public', css_class='form-group col-md-6'),
             ),
+            HTML('<hr><h5>Sharing Settings</h5>'),
+            HTML('<p class="text-muted small">Share this map with specific users. Public maps are visible to everyone.</p>'),
+            Field('shared_with', css_class='form-check'),
             Submit('submit', 'Save Map', css_class='btn btn-primary')
         )
 
 
 class MapObjectForm(forms.ModelForm):
     """Form for creating and editing map objects"""
+
+    COVER_LEVEL_CHOICES = [
+        ('', '-- Select Cover Level --'),
+        ('light', 'Light Cover (+2 defense)'),
+        ('medium', 'Medium Cover (+4 defense)'),
+        ('heavy', 'Heavy Cover (+6 defense, blocks movement/vision)'),
+    ]
+
+    cover_level = forms.ChoiceField(
+        choices=COVER_LEVEL_CHOICES,
+        required=False,
+        help_text='Select cover level (only for Cover type objects)'
+    )
 
     class Meta:
         model = MapObject
@@ -64,6 +96,11 @@ class MapObjectForm(forms.ModelForm):
                 Column('icon', css_class='form-group col-md-3'),
                 Column('color', css_class='form-group col-md-3'),
             ),
+            Div(
+                Field('cover_level', css_class='form-control'),
+                css_class='cover-level-section',
+                css_id='cover-level-container'
+            ),
             Row(
                 Column('is_visible_to_players', css_class='form-group col-md-4'),
                 Column('blocks_movement', css_class='form-group col-md-4'),
@@ -73,6 +110,68 @@ class MapObjectForm(forms.ModelForm):
             Field('notes', css_class='form-control'),
             Submit('submit', 'Save Object', css_class='btn btn-primary')
         )
+
+        # Pre-populate cover_level from stats if editing existing cover object
+        if self.instance and self.instance.pk and self.instance.object_type == 'cover':
+            if self.instance.stats and isinstance(self.instance.stats, dict):
+                self.initial['cover_level'] = self.instance.stats.get('cover_level', '')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        object_type = cleaned_data.get('object_type')
+        cover_level = cleaned_data.get('cover_level')
+
+        # Require cover_level when object_type is 'cover'
+        if object_type == 'cover' and not cover_level:
+            self.add_error('cover_level', 'Please select a cover level for cover objects.')
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        # If this is a cover object, populate properties based on cover_level
+        if instance.object_type == 'cover':
+            cover_level = self.cleaned_data.get('cover_level')
+            if cover_level:
+                # Cover level properties
+                cover_props = {
+                    'light': {'defense_bonus': 2, 'icon': '🛡', 'blocks_movement': False, 'blocks_vision': False},
+                    'medium': {'defense_bonus': 4, 'icon': '🛡️', 'blocks_movement': False, 'blocks_vision': False},
+                    'heavy': {'defense_bonus': 6, 'icon': '🛡', 'blocks_movement': True, 'blocks_vision': True},
+                }
+
+                props = cover_props.get(cover_level, cover_props['light'])
+
+                # Set icon if not already set
+                if not instance.icon:
+                    instance.icon = props['icon']
+
+                # Set blocking properties based on cover level
+                instance.blocks_movement = props['blocks_movement']
+                instance.blocks_vision = props['blocks_vision']
+
+                # Update stats with cover info
+                if not instance.stats:
+                    instance.stats = {}
+                elif isinstance(instance.stats, str):
+                    import json
+                    try:
+                        instance.stats = json.loads(instance.stats)
+                    except:
+                        instance.stats = {}
+
+                instance.stats['cover_level'] = cover_level
+                instance.stats['defense_bonus'] = props['defense_bonus']
+
+                # Update description if not set
+                if not instance.description:
+                    level_names = {'light': 'Light', 'medium': 'Medium', 'heavy': 'Heavy'}
+                    instance.description = f"{level_names[cover_level]} Cover providing +{props['defense_bonus']} defense"
+
+        if commit:
+            instance.save()
+        return instance
 
 
 class MapGenerationForm(forms.ModelForm):
@@ -166,6 +265,15 @@ class MapGenerationForm(forms.ModelForm):
         help_text='Width of maze paths (1-3)'
     )
 
+    # Cover System Parameters
+    cover_density = forms.FloatField(
+        required=False,
+        initial=0.15,
+        min_value=0.0,
+        max_value=0.5,
+        help_text='Density of cover objects (0.0-0.5, 0.15 = 15% of floor tiles)'
+    )
+
     class Meta:
         model = Map
         fields = ['name', 'width', 'height', 'map_type']
@@ -220,6 +328,10 @@ class MapGenerationForm(forms.ModelForm):
             HTML('<h6>Maze Parameters</h6>'),
             Field('path_width', css_class='form-control'),
             HTML('</div>'),
+
+            HTML('<hr><h5>Cover System</h5>'),
+            HTML('<p class="text-muted small">Add procedural cover objects (furniture, vehicles, etc.) for tactical gameplay</p>'),
+            Field('cover_density', css_class='form-control'),
 
             HTML('<hr><h5>Or Use a Preset</h5>'),
             Div(

@@ -154,8 +154,11 @@ class Character(models.Model):
     @property
     def initiative_dice(self):
         """Initiative dice (usually 1 + modifiers from cyberware/magic)"""
-        # TODO: Calculate from augmentations
-        return 1
+        base_dice = 1
+        # Add bonuses from equipped cyberware/bioware
+        for item in self.equipment.filter(gear__category__in=['cyberware', 'bioware']):
+            base_dice += item.gear.initiative_dice_bonus
+        return base_dice
 
     @property
     def physical_monitor_max(self):
@@ -184,13 +187,92 @@ class Character(models.Model):
 
     @property
     def armor_rating(self):
-        """Total armor rating from equipped armor"""
-        # TODO: Calculate from equipped armor gear
+        """Total armor rating from equipped armor and augmentations"""
         total = 0
+        # Add armor from armor gear
         for item in self.equipment.filter(gear__category='armor'):
-            if hasattr(item.gear, 'armor_rating'):
-                total += item.gear.armor_rating or 0
+            if hasattr(item.gear, 'armor_rating') and item.gear.armor_rating:
+                total += item.gear.armor_rating
+        # Add armor bonuses from cyberware/bioware
+        for item in self.equipment.filter(gear__category__in=['cyberware', 'bioware']):
+            total += item.gear.armor_bonus
         return total
+
+    @property
+    def overflow_damage(self):
+        """Overflow damage threshold (Physical Monitor Max + Body)"""
+        return self.physical_monitor_max + self.body
+
+    @property
+    def walk_rate(self):
+        """Walking movement rate (Agility x 2 meters per combat turn)"""
+        return self.agility * 2
+
+    @property
+    def run_rate(self):
+        """Running movement rate (Agility x 4 meters per combat turn)"""
+        return self.agility * 4
+
+    @property
+    def sprint_rate(self):
+        """Sprinting rate (+1d6 meters added to run rate)"""
+        return f"{self.run_rate} + 1d6"
+
+    @property
+    def composure(self):
+        """Composure (Charisma + Willpower)"""
+        return self.charisma + self.willpower
+
+    @property
+    def judge_intentions(self):
+        """Judge Intentions (Charisma + Intuition)"""
+        return self.charisma + self.intuition
+
+    @property
+    def memory(self):
+        """Memory (Logic + Intuition)"""
+        return self.logic + self.intuition
+
+    @property
+    def lifting_carrying(self):
+        """Lifting/Carrying (Strength x 15 kg)"""
+        return self.strength * 15
+
+    @property
+    def total_qualities_karma(self):
+        """Total karma impact from all qualities (positive and negative)"""
+        total = 0
+        for cq in self.qualities.select_related('quality').all():
+            total += cq.quality.karma_cost
+        return total
+
+    @property
+    def total_equipment_value(self):
+        """Total value of all equipment in nuyen"""
+        total = 0
+        for item in self.equipment.select_related('gear').all():
+            total += item.total_cost
+        return total
+
+    @property
+    def total_essence_loss(self):
+        """Total essence lost from cyberware/bioware"""
+        return float(6.00 - self.essence)
+
+    @property
+    def defense_pool_ranged(self):
+        """Defense pool against ranged attacks (Reaction + Intuition)"""
+        return self.reaction + self.intuition
+
+    @property
+    def defense_pool_melee(self):
+        """Defense pool against melee attacks (Reaction + Intuition)"""
+        return self.reaction + self.intuition
+
+    @property
+    def soak_pool(self):
+        """Damage resistance pool (Body + Armor)"""
+        return self.body + self.armor_rating
 
 
 class Quality(models.Model):
@@ -260,6 +342,11 @@ class Gear(models.Model):
 
     # Armor-specific fields
     armor_rating = models.IntegerField(null=True, blank=True, help_text="Armor value")
+
+    # Cyberware/Bioware bonus fields
+    armor_bonus = models.IntegerField(default=0, help_text="Additional armor from cyberware/bioware")
+    initiative_dice_bonus = models.IntegerField(default=0, help_text="Initiative dice bonus from augmentations")
+    reaction_bonus = models.IntegerField(default=0, help_text="Reaction bonus from augmentations")
 
     class Meta:
         ordering = ['category', 'name']

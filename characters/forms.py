@@ -1,5 +1,9 @@
 from django import forms
-from .models import Character, Quality, CharacterQuality, Gear, CharacterGear
+from .models import (
+    Character, Quality, CharacterQuality, Gear, CharacterGear, Skill, CharacterSkill,
+    Spell, CharacterSpell, AdeptPower, CharacterAdeptPower, ComplexForm, CharacterComplexForm,
+    Contact, Language
+)
 from .npc_generator import get_archetype_choices, get_threat_level_choices, ARCHETYPE_TEMPLATES, THREAT_LEVELS
 
 
@@ -188,6 +192,35 @@ class CharacterFinishingForm(forms.ModelForm):
         }
 
 
+class CharacterSkillForm(forms.ModelForm):
+    """Form for adding/editing character skills"""
+
+    class Meta:
+        model = CharacterSkill
+        fields = ['skill', 'rating', 'specialization', 'notes']
+        widgets = {
+            'skill': forms.Select(attrs={'class': 'form-select'}),
+            'rating': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 12}),
+            'specialization': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Pistols (Semi-Automatics)'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+        labels = {
+            'skill': 'Skill',
+            'rating': 'Skill Rating (0-12)',
+            'specialization': 'Specialization (Optional)',
+            'notes': 'Notes',
+        }
+
+    def __init__(self, *args, **kwargs):
+        character = kwargs.pop('character', None)
+        super().__init__(*args, **kwargs)
+
+        # Filter out skills the character already has (unless editing)
+        if character and not self.instance.pk:
+            existing_skill_ids = character.skills.values_list('skill_id', flat=True)
+            self.fields['skill'].queryset = Skill.objects.exclude(id__in=existing_skill_ids)
+
+
 class NPCGeneratorForm(forms.Form):
     """Form for generating random NPCs"""
 
@@ -255,3 +288,129 @@ class NPCGeneratorForm(forms.Form):
         """Get description for selected threat level"""
         threat = THREAT_LEVELS.get(threat_key, {})
         return threat.get('description', '')
+
+
+class CharacterSpellForm(forms.ModelForm):
+    """Form for adding/editing character spells"""
+
+    class Meta:
+        model = CharacterSpell
+        fields = ['spell', 'notes']
+        widgets = {
+            'spell': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional notes about this spell'}),
+        }
+        labels = {
+            'spell': 'Spell',
+            'notes': 'Notes',
+        }
+
+    def __init__(self, *args, **kwargs):
+        character = kwargs.pop('character', None)
+        super().__init__(*args, **kwargs)
+
+        # Filter out spells the character already has (unless editing)
+        if character and not self.instance.pk:
+            existing_spell_ids = character.spells.values_list('spell_id', flat=True)
+            self.fields['spell'].queryset = Spell.objects.exclude(id__in=existing_spell_ids)
+
+
+class CharacterAdeptPowerForm(forms.ModelForm):
+    """Form for adding/editing character adept powers"""
+
+    class Meta:
+        model = CharacterAdeptPower
+        fields = ['power', 'level', 'notes']
+        widgets = {
+            'power': forms.Select(attrs={'class': 'form-select'}),
+            'level': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 10}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional notes about this power'}),
+        }
+        labels = {
+            'power': 'Adept Power',
+            'level': 'Level',
+            'notes': 'Notes',
+        }
+
+    def __init__(self, *args, **kwargs):
+        character = kwargs.pop('character', None)
+        super().__init__(*args, **kwargs)
+
+        # Filter out powers the character already has (unless editing)
+        if character and not self.instance.pk:
+            existing_power_ids = character.adept_powers.values_list('power_id', flat=True)
+            self.fields['power'].queryset = AdeptPower.objects.exclude(id__in=existing_power_ids)
+
+
+class CharacterComplexFormForm(forms.ModelForm):
+    """Form for adding/editing character complex forms"""
+
+    class Meta:
+        model = CharacterComplexForm
+        fields = ['form', 'notes']
+        widgets = {
+            'form': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional notes about this form'}),
+        }
+        labels = {
+            'form': 'Complex Form',
+            'notes': 'Notes',
+        }
+
+    def __init__(self, *args, **kwargs):
+        character = kwargs.pop('character', None)
+        super().__init__(*args, **kwargs)
+
+        # Filter out forms the character already has (unless editing)
+        if character and not self.instance.pk:
+            existing_form_ids = character.complex_forms.values_list('form_id', flat=True)
+            self.fields['form'].queryset = ComplexForm.objects.exclude(id__in=existing_form_ids)
+
+
+class CharacterContactForm(forms.ModelForm):
+    """Form for adding/editing character contacts"""
+
+    class Meta:
+        model = Contact
+        fields = ['name', 'archetype', 'connection', 'loyalty', 'description', 'notes']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contact name'}),
+            'archetype': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Fixer, Street Doc, Corporate Manager'}),
+            'connection': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 12}),
+            'loyalty': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 6}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Physical description, personality, location...'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'How you met, services provided, etc.'}),
+        }
+        labels = {
+            'name': 'Contact Name',
+            'archetype': 'Archetype/Profession',
+            'connection': 'Connection Rating (1-12)',
+            'loyalty': 'Loyalty Rating (1-6)',
+            'description': 'Description',
+            'notes': 'Notes',
+        }
+        help_texts = {
+            'connection': 'How influential and resourceful is this contact?',
+            'loyalty': 'How loyal is this contact to you?',
+        }
+
+
+class CharacterLanguageForm(forms.ModelForm):
+    """Form for adding/editing character languages"""
+
+    class Meta:
+        model = Language
+        fields = ['name', 'proficiency', 'notes']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., English, Japanese, Sperethiel'}),
+            'proficiency': forms.Select(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Where learned, dialects, etc.'}),
+        }
+        labels = {
+            'name': 'Language Name',
+            'proficiency': 'Proficiency Level',
+            'notes': 'Notes',
+        }
+        help_texts = {
+            'proficiency': 'Native: Speaks as first language | Fluent: Professional level | Conversational: Basic dialogue | Basic: Simple phrases',
+        }

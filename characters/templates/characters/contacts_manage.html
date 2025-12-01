@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ character.name }} - Contacts{% endblock %}
+
+{% block extra_css %}
+<style>
+    .contact-card {
+        border-left: 4px solid #17a2b8;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+
+    .contact-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateX(2px);
+    }
+
+    .connection-badge {
+        font-size: 1.1em;
+        font-weight: bold;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background-color: #17a2b8;
+        color: white;
+        display: inline-block;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .loyalty-badge {
+        font-size: 1.1em;
+        font-weight: bold;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background-color: #28a745;
+        color: white;
+        display: inline-block;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .archetype-badge {
+        background-color: #6c757d;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+
+    .no-contacts-message {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-people"></i>
+                {{ character.name }} - Contacts
+            </h2>
+            <p class="text-muted">Manage your character's contacts and connections</p>
+        </div>
+        <div>
+            <a href="{% url 'characters:detail' character.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Character
+            </a>
+            <a href="{% url 'characters:contact_add' character.pk %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Contact
+            </a>
+        </div>
+    </div>
+
+    <!-- Contacts List -->
+    {% if contacts %}
+        {% for contact in contacts %}
+        <div class="card contact-card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <!-- Connection/Loyalty -->
+                    <div class="col-auto">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="connection-badge" title="Connection Rating">
+                                C{{ contact.connection }}
+                            </span>
+                            <span class="loyalty-badge mt-1" title="Loyalty Rating">
+                                L{{ contact.loyalty }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="col">
+                        <h5 class="mb-1">
+                            {{ contact.name }}
+                            {% if contact.archetype %}
+                                <span class="archetype-badge">{{ contact.archetype }}</span>
+                            {% endif %}
+                        </h5>
+                        {% if contact.description %}
+                            <p class="mb-1 small text-muted">{{ contact.description|truncatewords:30 }}</p>
+                        {% endif %}
+                        {% if contact.notes %}
+                            <small class="text-muted">
+                                <i class="bi bi-sticky"></i> {{ contact.notes|truncatewords:20 }}
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="col-auto">
+                        <a href="{% url 'characters:contact_edit' character.pk contact.pk %}"
+                           class="btn btn-sm btn-outline-primary" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'characters:contact_delete' character.pk contact.pk %}"
+                           class="btn btn-sm btn-outline-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body no-contacts-message">
+                <i class="bi bi-people" style="font-size: 3em;"></i>
+                <h4 class="mt-3">No Contacts Yet</h4>
+                <p class="text-muted">Add contacts to track your character's connections and relationships</p>
+                <a href="{% url 'characters:contact_add' character.pk %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Add Your First Contact
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Contact Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Total Contacts:</strong> {{ contacts.count }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Highest Connection:</strong>
+                    {% if contacts %}
+                        {% with highest=contacts|dictsort:"connection"|last %}
+                            {{ highest.connection }}
+                        {% endwith %}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <strong>Highest Loyalty:</strong>
+                    {% if contacts %}
+                        {% with highest=contacts|dictsort:"loyalty"|last %}
+                            {{ highest.loyalty }}
+                        {% endwith %}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Connection & Loyalty Guide</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Connection Rating (1-12)</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>1-2:</strong> Street-level influence</li>
+                        <li><strong>3-4:</strong> Neighborhood contacts</li>
+                        <li><strong>5-6:</strong> City-wide resources</li>
+                        <li><strong>7-8:</strong> Regional influence</li>
+                        <li><strong>9-10:</strong> National connections</li>
+                        <li><strong>11-12:</strong> Global reach</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Loyalty Rating (1-6)</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>1:</strong> Just business</li>
+                        <li><strong>2:</strong> Professional</li>
+                        <li><strong>3:</strong> Friendly</li>
+                        <li><strong>4:</strong> Close friend</li>
+                        <li><strong>5:</strong> Family-like bond</li>
+                        <li><strong>6:</strong> Die for you</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

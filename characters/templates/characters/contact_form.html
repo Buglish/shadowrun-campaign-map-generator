@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} Contact - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if action == 'Add' %}plus-circle{% else %}pencil{% endif %}"></i>
+                        {{ action }} Contact for {{ character.name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Contact
+                            </button>
+                            <a href="{% url 'characters:contacts_manage' character.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Contact Rating Guide</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Connection Rating (1-12)</h6>
+                            <ul class="list-unstyled small mb-0">
+                                <li><strong>1-2:</strong> Street-level (ganger, squatter)</li>
+                                <li><strong>3-4:</strong> Local (shop owner, beat cop)</li>
+                                <li><strong>5-6:</strong> City (fixer, detective)</li>
+                                <li><strong>7-8:</strong> Regional (corp manager, politician)</li>
+                                <li><strong>9-10:</strong> National (exec, federal agent)</li>
+                                <li><strong>11-12:</strong> Global (megacorp VP, spy master)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Loyalty Rating (1-6)</h6>
+                            <ul class="list-unstyled small mb-0">
+                                <li><strong>1:</strong> Just business - will sell you out</li>
+                                <li><strong>2:</strong> Professional - paid services only</li>
+                                <li><strong>3:</strong> Friendly - occasional favor</li>
+                                <li><strong>4:</strong> Close - will take risks for you</li>
+                                <li><strong>5:</strong> Family - significant personal risk</li>
+                                <li><strong>6:</strong> Die for you - ultimate loyalty</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>Common Contact Archetypes</h6>
+                    <p class="mb-0 small text-muted">
+                        Fixer, Street Doc, Corporate Contact, Gang Leader, Bartender, Journalist,
+                        Talismonger, Arms Dealer, Mechanic, Hacker, Smuggler, Lawyer,
+                        Police Contact, Club Owner, Information Broker
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ character.name }} - Spells{% endblock %}
+
+{% block extra_css %}
+<style>
+    .spell-card {
+        border-left: 4px solid #8b5cf6;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+
+    .spell-card:hover {
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+        transform: translateX(2px);
+    }
+
+    .spell-category-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #c084fc 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .spell-type-badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: bold;
+    }
+
+    .spell-type-physical {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .spell-type-mana {
+        background-color: #6f42c1;
+        color: white;
+    }
+
+    .no-spells-message {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-stars"></i>
+                {{ character.name }} - Spells
+            </h2>
+            <p class="text-muted">Manage your character's magical spells</p>
+        </div>
+        <div>
+            <a href="{% url 'characters:detail' character.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Character
+            </a>
+            <a href="{% url 'characters:spell_add' character.pk %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Spell
+            </a>
+        </div>
+    </div>
+
+    <!-- Spells by Category -->
+    {% if spells_by_category %}
+        {% for category, spells in spells_by_category.items %}
+        <div class="spell-category mb-4">
+            <div class="spell-category-header">
+                <h4 class="mb-0">
+                    {% if category == "Combat" %}<i class="bi bi-fire"></i>
+                    {% elif category == "Detection" %}<i class="bi bi-eye"></i>
+                    {% elif category == "Health" %}<i class="bi bi-heart-pulse"></i>
+                    {% elif category == "Illusion" %}<i class="bi bi-mask"></i>
+                    {% elif category == "Manipulation" %}<i class="bi bi-hand-index-thumb"></i>
+                    {% else %}<i class="bi bi-stars"></i>{% endif %}
+                    {{ category }} Spells
+                </h4>
+            </div>
+
+            {% for character_spell in spells %}
+            <div class="card spell-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <!-- Spell Info -->
+                        <div class="col">
+                            <h5 class="mb-1">
+                                {{ character_spell.spell.name }}
+                                <span class="spell-type-badge spell-type-{{ character_spell.spell.spell_type }}">
+                                    {{ character_spell.spell.get_spell_type_display }}
+                                </span>
+                            </h5>
+                            <small class="text-muted">
+                                <strong>Range:</strong> {{ character_spell.spell.get_range_type_display }} |
+                                <strong>Duration:</strong> {{ character_spell.spell.get_duration_display }} |
+                                <strong>Drain:</strong> {{ character_spell.spell.drain }}
+                                {% if character_spell.notes %}
+                                    <br>{{ character_spell.notes }}
+                                {% endif %}
+                            </small>
+                            {% if character_spell.spell.description %}
+                                <p class="mb-0 mt-2 small">{{ character_spell.spell.description }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-auto">
+                            <a href="{% url 'characters:spell_edit' character.pk character_spell.pk %}"
+                               class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'characters:spell_delete' character.pk character_spell.pk %}"
+                               class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body no-spells-message">
+                <i class="bi bi-stars" style="font-size: 3em; color: #8b5cf6;"></i>
+                <h4 class="mt-3">No Spells Yet</h4>
+                <p class="text-muted">Add spells to build your magical repertoire</p>
+                <a href="{% url 'characters:spell_add' character.pk %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Add Your First Spell
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Spell Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Total Spells:</strong> {{ character.spells.count }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Categories:</strong> {{ spells_by_category|length }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Magic Rating:</strong> {{ character.magic }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

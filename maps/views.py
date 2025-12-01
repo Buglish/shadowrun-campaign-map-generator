@@ -15,6 +15,7 @@ from .generators import (
     generate_random_walk_map,
     generate_maze_map
 )
+from .cover_system import calculate_cover_positions
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +47,13 @@ def map_create(request):
     """Create a new map"""
     try:
         if request.method == 'POST':
-            form = MapForm(request.POST)
+            form = MapForm(request.POST, user=request.user)
             if form.is_valid():
                 try:
                     map_obj = form.save(commit=False)
                     map_obj.owner = request.user
                     map_obj.save()
+                    form.save_m2m()  # Save many-to-many relationships (shared_with)
 
                     # Initialize the map with default floor tiles
                     for y in range(map_obj.height):
@@ -74,7 +76,7 @@ def map_create(request):
                     messages.error(request, 'Failed to create map. Please try again.')
                     return redirect('maps:list')
         else:
-            form = MapForm()
+            form = MapForm(user=request.user)
 
         context = {'form': form, 'action': 'Create'}
         return render(request, 'maps/form.html', context)
@@ -126,7 +128,7 @@ def map_edit(request, pk):
         map_obj = get_object_or_404(models.Map, pk=pk, owner=request.user)
 
         if request.method == 'POST':
-            form = MapForm(request.POST, instance=map_obj)
+            form = MapForm(request.POST, instance=map_obj, user=request.user)
             if form.is_valid():
                 try:
                     form.save()
@@ -137,7 +139,7 @@ def map_edit(request, pk):
                     logger.error(f"Error saving map {pk} for user {request.user.username}: {str(e)}", exc_info=True)
                     messages.error(request, 'Failed to update map. Please try again.')
         else:
-            form = MapForm(instance=map_obj)
+            form = MapForm(instance=map_obj, user=request.user)
 
         context = {'form': form, 'map': map_obj, 'action': 'Edit'}
         return render(request, 'maps/form.html', context)
@@ -419,7 +421,27 @@ def map_generate(request):
                             params['path_width'] = form.cleaned_data['path_width']
 
                     # Generate tiles based on algorithm
-                    generate_map_tiles(map_obj, algorithm=algorithm, params=params)
+                    floor_tiles = generate_map_tiles(map_obj, algorithm=algorithm, params=params)
+
+                    # Place cover objects if density > 0
+                    cover_density = form.cleaned_data.get('cover_density', 0.0)
+                    if cover_density and cover_density > 0 and floor_tiles:
+                        cover_objects = calculate_cover_positions(
+                            floor_tiles=floor_tiles,
+                            width=map_obj.width,
+                            height=map_obj.height,
+                            density=cover_density,
+                            map_type=map_obj.map_type
+                        )
+
+                        # Create cover objects in database
+                        for cover_data in cover_objects:
+                            models.MapObject.objects.create(
+                                map=map_obj,
+                                **cover_data
+                            )
+
+                        logger.info(f"Placed {len(cover_objects)} cover objects on map '{map_obj.name}'")
 
                     logger.info(f"User {request.user.username} generated map '{map_obj.name}' (ID: {map_obj.pk}) with {algorithm}")
                     messages.success(request, f'Map "{map_obj.name}" generated successfully!')
@@ -431,7 +453,17 @@ def map_generate(request):
         else:
             form = MapGenerationForm(request.user)
 
-        context = {'form': form}
+        # Get available presets for user
+        user_presets = models.MapGenerationPreset.objects.filter(owner=request.user).order_by('name')
+        public_presets = models.MapGenerationPreset.objects.filter(
+            is_public=True
+        ).exclude(owner=request.user).order_by('name')
+
+        context = {
+            'form': form,
+            'user_presets': user_presets,
+            'public_presets': public_presets,
+        }
         return render(request, 'maps/generate.html', context)
     except Exception as e:
         logger.error(f"Unexpected error in map_generate for user {request.user.username}: {str(e)}", exc_info=True)
@@ -586,7 +618,8 @@ def generate_map_tiles(map_obj, algorithm='random', params=None):
         # Random/default algorithm
         tile_data = generate_random_tiles(map_obj.width, map_obj.height, seed, config)
 
-    # Create tiles in database
+    # Create tiles in database and collect floor tiles for cover placement
+    floor_tiles = []
     for x, y, base_terrain in tile_data:
         # Map algorithm terrain types to map-type specific terrain
         terrain_info = config.get(base_terrain, config['floor'])
@@ -600,6 +633,12 @@ def generate_map_tiles(map_obj, algorithm='random', params=None):
             is_transparent=terrain_info['transparent'],
             color=terrain_info['color']
         )
+
+        # Collect walkable floor tiles for cover placement
+        if terrain_info['walkable'] and base_terrain in ['floor', 'cave', 'tunnel']:
+            floor_tiles.append((x, y, base_terrain))
+
+    return floor_tiles
 
 
 def generate_random_tiles(width, height, seed, config):
@@ -756,3 +795,146 @@ def reset_fog_of_war(request, pk):
         'success': True,
         'revealed_count': 0
     })
+
+
+# ===== Map Generation Preset Views =====
+
+@login_required
+def preset_list(request):
+    """List all map generation presets (user's own + public)"""
+    try:
+        # Get user's own presets
+        user_presets = models.MapGenerationPreset.objects.filter(owner=request.user).order_by('name')
+
+        # Get public presets from other users
+        public_presets = models.MapGenerationPreset.objects.filter(
+            is_public=True
+        ).exclude(owner=request.user).order_by('name')
+
+        context = {
+            'user_presets': user_presets,
+            'public_presets': public_presets,
+        }
+
+        return render(request, 'maps/preset_list.html', context)
+    except Exception as e:
+        logger.error(f"Error listing presets for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while loading presets.')
+        return redirect('maps:list')
+
+
+@login_required
+def preset_create(request):
+    """Create a new map generation preset"""
+    try:
+        if request.method == 'POST':
+            form = MapGenerationPresetForm(request.POST)
+            if form.is_valid():
+                preset = form.save(commit=False)
+                preset.owner = request.user
+                preset.save()
+                logger.info(f"User {request.user.username} created preset '{preset.name}' (ID: {preset.pk})")
+                messages.success(request, f'Preset "{preset.name}" created successfully!')
+                return redirect('maps:preset_list')
+        else:
+            form = MapGenerationPresetForm()
+
+        context = {
+            'form': form,
+            'action': 'Create',
+        }
+
+        return render(request, 'maps/preset_form.html', context)
+    except Exception as e:
+        logger.error(f"Error creating preset for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while creating the preset.')
+        return redirect('maps:preset_list')
+
+
+@login_required
+def preset_edit(request, pk):
+    """Edit an existing map generation preset"""
+    try:
+        preset = get_object_or_404(models.MapGenerationPreset, pk=pk, owner=request.user)
+
+        if request.method == 'POST':
+            form = MapGenerationPresetForm(request.POST, instance=preset)
+            if form.is_valid():
+                form.save()
+                logger.info(f"User {request.user.username} updated preset '{preset.name}' (ID: {preset.pk})")
+                messages.success(request, f'Preset "{preset.name}" updated successfully!')
+                return redirect('maps:preset_list')
+        else:
+            form = MapGenerationPresetForm(instance=preset)
+
+        context = {
+            'form': form,
+            'preset': preset,
+            'action': 'Edit',
+        }
+
+        return render(request, 'maps/preset_form.html', context)
+    except Exception as e:
+        logger.error(f"Error editing preset {pk} for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while editing the preset.')
+        return redirect('maps:preset_list')
+
+
+@login_required
+def preset_delete(request, pk):
+    """Delete a map generation preset"""
+    try:
+        preset = get_object_or_404(models.MapGenerationPreset, pk=pk, owner=request.user)
+
+        if request.method == 'POST':
+            preset_name = preset.name
+            preset.delete()
+            logger.info(f"User {request.user.username} deleted preset '{preset_name}' (ID: {pk})")
+            messages.success(request, f'Preset "{preset_name}" deleted successfully!')
+            return redirect('maps:preset_list')
+
+        context = {
+            'preset': preset,
+        }
+
+        return render(request, 'maps/preset_delete_confirm.html', context)
+    except Exception as e:
+        logger.error(f"Error deleting preset {pk} for user {request.user.username}: {str(e)}", exc_info=True)
+        messages.error(request, 'An error occurred while deleting the preset.')
+        return redirect('maps:preset_list')
+
+
+@login_required
+def preset_load(request, pk):
+    """Load a preset's parameters (AJAX endpoint)"""
+    try:
+        # Allow loading own presets or public presets
+        preset = get_object_or_404(
+            models.MapGenerationPreset,
+            Q(owner=request.user) | Q(is_public=True),
+            pk=pk
+        )
+
+        # Return preset data as JSON
+        data = {
+            'success': True,
+            'preset': {
+                'name': preset.name,
+                'width': preset.width,
+                'height': preset.height,
+                'map_type': preset.map_type,
+                'obstacle_density': preset.obstacle_density,
+                'object_density': preset.object_density,
+                'generation_algorithm': preset.generation_algorithm,
+                'custom_parameters': preset.custom_parameters,
+            }
+        }
+
+        logger.info(f"User {request.user.username} loaded preset '{preset.name}' (ID: {preset.pk})")
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(f"Error loading preset {pk} for user {request.user.username}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'Failed to load preset'
+        }, status=500)

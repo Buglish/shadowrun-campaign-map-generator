@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ character.name }} - Complex Forms{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        border-left: 4px solid #06b6d4;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+
+    .form-card:hover {
+        box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+        transform: translateX(2px);
+    }
+
+    .forms-header {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .target-badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: bold;
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .duration-badge {
+        background-color: #8b5cf6;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+
+    .no-forms-message {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-cpu"></i>
+                {{ character.name }} - Complex Forms
+            </h2>
+            <p class="text-muted">Manage your technomancer complex forms</p>
+        </div>
+        <div>
+            <a href="{% url 'characters:detail' character.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Character
+            </a>
+            <a href="{% url 'characters:complex_form_add' character.pk %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Complex Form
+            </a>
+        </div>
+    </div>
+
+    <!-- Resonance Info -->
+    <div class="forms-header">
+        <h4 class="mb-2"><i class="bi bi-diagram-3"></i> Resonance Information</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Resonance Rating:</strong> {{ character.resonance }}
+            </div>
+            <div class="col-md-6">
+                <strong>Total Complex Forms:</strong> {{ complex_forms.count }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Complex Forms List -->
+    {% if complex_forms %}
+        {% for character_form in complex_forms %}
+        <div class="card form-card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <!-- Form Info -->
+                    <div class="col">
+                        <h5 class="mb-1">
+                            {{ character_form.form.name }}
+                            <span class="target-badge">{{ character_form.form.get_target_display }}</span>
+                            <span class="duration-badge">{{ character_form.form.get_duration_display }}</span>
+                        </h5>
+                        <small class="text-muted">
+                            <strong>Fading:</strong> {{ character_form.form.fading }}
+                            {% if character_form.notes %}
+                                <br>{{ character_form.notes }}
+                            {% endif %}
+                        </small>
+                        {% if character_form.form.description %}
+                            <p class="mb-0 mt-2 small">{{ character_form.form.description }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="col-auto">
+                        <a href="{% url 'characters:complex_form_edit' character.pk character_form.pk %}"
+                           class="btn btn-sm btn-outline-primary" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'characters:complex_form_delete' character.pk character_form.pk %}"
+                           class="btn btn-sm btn-outline-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="card-body no-forms-message">
+                <i class="bi bi-cpu" style="font-size: 3em; color: #06b6d4;"></i>
+                <h4 class="mt-3">No Complex Forms Yet</h4>
+                <p class="text-muted">Add complex forms to build your technomancer abilities</p>
+                <a href="{% url 'characters:complex_form_add' character.pk %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Add Your First Complex Form
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Summary Stats -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Complex Form Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Total Forms:</strong> {{ complex_forms.count }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Resonance Rating:</strong> {{ character.resonance }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Form Types:</strong>
+                    {% if complex_forms %}
+                        {% regroup complex_forms by form.target as target_list %}
+                        {{ target_list|length }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

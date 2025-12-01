@@ -21,6 +21,51 @@
                         </p>
                     </div>
 
+                    <!-- Preset Selector -->
+                    {% if user_presets or public_presets %}
+                    <div class="card mb-3 bg-light">
+                        <div class="card-body">
+                            <h5><i class="bi bi-bookmark-star"></i> Load from Preset</h5>
+                            <p class="small text-muted mb-2">Quickly fill in the form with a saved configuration</p>
+                            <div class="row align-items-end">
+                                <div class="col-md-8">
+                                    <select id="presetSelector" class="form-control">
+                                        <option value="">-- Select a preset --</option>
+                                        {% if user_presets %}
+                                            <optgroup label="My Presets">
+                                                {% for preset in user_presets %}
+                                                    <option value="{{ preset.pk }}">{{ preset.name }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endif %}
+                                        {% if public_presets %}
+                                            <optgroup label="Public Presets">
+                                                {% for preset in public_presets %}
+                                                    <option value="{{ preset.pk }}">{{ preset.name }} (by {{ preset.owner.username }})</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" id="loadPresetButton" class="btn btn-primary w-100" disabled>
+                                        <i class="bi bi-download"></i> Load Preset
+                                    </button>
+                                    <a href="{% url 'maps:preset_list' %}" class="btn btn-sm btn-outline-secondary w-100 mt-1">
+                                        <i class="bi bi-gear"></i> Manage Presets
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Tip:</strong> You don't have any presets yet.
+                        <a href="{% url 'maps:preset_create' %}">Create a preset</a> to save your favorite generation settings for quick reuse.
+                    </div>
+                    {% endif %}
+
                     <form method="post" id="generateForm">
                         {% csrf_token %}
                         {% crispy form %}
@@ -106,6 +151,75 @@ document.addEventListener('DOMContentLoaded', function() {
     const acceptButton = document.getElementById('acceptButton');
     const regenerateButton = document.getElementById('regenerateButton');
     const cancelButton = document.getElementById('cancelButton');
+
+    // Preset loading
+    const presetSelector = document.getElementById('presetSelector');
+    const loadPresetButton = document.getElementById('loadPresetButton');
+
+    if (presetSelector && loadPresetButton) {
+        // Enable button when preset is selected
+        presetSelector.addEventListener('change', function() {
+            loadPresetButton.disabled = !presetSelector.value;
+        });
+
+        // Load preset data when button is clicked
+        loadPresetButton.addEventListener('click', function() {
+            const presetId = presetSelector.value;
+            if (!presetId) return;
+
+            // Show loading state
+            const originalText = loadPresetButton.innerHTML;
+            loadPresetButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+            loadPresetButton.disabled = true;
+
+            // Fetch preset data
+            fetch(`/maps/presets/${presetId}/load/`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Populate form fields with preset data
+                    const preset = data.preset;
+
+                    // Set basic fields
+                    if (document.getElementById('id_name')) {
+                        document.getElementById('id_name').value = preset.name + ' (Copy)';
+                    }
+                    if (document.getElementById('id_width')) {
+                        document.getElementById('id_width').value = preset.width;
+                    }
+                    if (document.getElementById('id_height')) {
+                        document.getElementById('id_height').value = preset.height;
+                    }
+                    if (document.getElementById('id_map_type')) {
+                        document.getElementById('id_map_type').value = preset.map_type;
+                    }
+                    if (document.getElementById('id_algorithm')) {
+                        document.getElementById('id_algorithm').value = preset.generation_algorithm;
+                        // Trigger change event to update parameter visibility
+                        algorithmSelect.dispatchEvent(new Event('change'));
+                    }
+
+                    // Show success message
+                    alert('Preset loaded successfully! You can now modify the settings and generate the map.');
+                } else {
+                    alert('Error loading preset: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while loading the preset.');
+            })
+            .finally(() => {
+                loadPresetButton.innerHTML = originalText;
+                loadPresetButton.disabled = false;
+            });
+        });
+    }
 
     function updateParameterVisibility() {
         // Hide all parameter sections

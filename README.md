@@ -708,17 +708,86 @@ The campaign system provides comprehensive tools for organizing and running Shad
 
 ### In Progress
 
+### Completed (Recent)
+
+- [x] Real-time collaborative map editing:
+  - [x] WebSocket-based synchronization using Django Channels
+  - [x] Multiple users can edit maps simultaneously
+  - [x] Live tile updates broadcast to all connected users
+  - [x] User presence tracking (see who's online)
+  - [x] Remote cursor display (see other users' positions)
+  - [x] Connection status indicator
+  - [x] Graceful fallback to AJAX when WebSocket unavailable
+  - [x] Shared users can now edit maps (not just view)
+
 ### Planned
 
 #### Future Enhancements
-- [ ] Real-time collaborative map editing
-- [ ] Advanced pathfinding with terrain cost calculation
+- [x] Advanced pathfinding with terrain cost calculation
 - [ ] Multi-layer map support (ground, objects, lighting layers)
 - [ ] Map annotations and drawing tools (freehand, shapes, text)
 - [ ] Import/export maps in common formats (JSON, image)
 - [ ] Character portrait and token management
 - [ ] Advanced search and filtering for characters/campaigns
 - [ ] Automated combat AI for NPCs
+
+## Real-time Collaboration Setup
+
+The application supports real-time collaborative map editing using WebSockets. This feature requires Django Channels.
+
+### Development Setup (InMemoryChannelLayer)
+
+By default, the application uses an in-memory channel layer for development:
+
+```bash
+# Install dependencies
+venv/bin/pip install -r requirements.txt
+
+# Run with Daphne (ASGI server with WebSocket support)
+venv/bin/daphne shadowrun_campaign.asgi:application
+
+# Or use Django's development server (limited WebSocket support)
+venv/bin/python manage.py runserver
+```
+
+### Production Setup (Redis)
+
+For production deployments with multiple workers, use Redis as the channel layer:
+
+1. Install and start Redis:
+```bash
+# Ubuntu/Debian
+sudo apt install redis-server
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+```
+
+2. Configure environment variables in `.env`:
+```bash
+USE_REDIS=True
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+```
+
+3. Run with Daphne:
+```bash
+venv/bin/daphne -b 0.0.0.0 -p 8000 shadowrun_campaign.asgi:application
+```
+
+### Nginx Configuration for WebSocket
+
+If using Nginx as a reverse proxy, add WebSocket support:
+
+```nginx
+location /ws/ {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
 
 ## Contributing
 

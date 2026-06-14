@@ -4,6 +4,12 @@ crispy-bootstrap5==2024.10
 Pillow==10.2.0
 python-dotenv==1.0.0
 
+# Real-time WebSocket support for collaborative map editing
+channels>=4.0.0
+channels-redis>=4.1.0
+daphne>=4.0.0
+redis>=5.0.0
+
 # For production MySQL support, uncomment and install system dependencies:
 # mysqlclient==2.2.1
 # Note: Requires apt install libmysqlclient-dev pkg-config

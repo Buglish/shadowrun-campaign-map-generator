@@ -101,6 +101,37 @@
         background-color: rgba(255, 255, 0, 0.3) !important;
     }
 
+    .map-tile.path-start {
+        border: 3px solid #00e676 !important;
+        box-shadow: 0 0 12px #00e676;
+        z-index: 5;
+    }
+
+    .map-tile.path-end {
+        border: 3px solid #ff1744 !important;
+        box-shadow: 0 0 12px #ff1744;
+        z-index: 5;
+    }
+
+    .map-tile.path-tile {
+        background-color: rgba(255, 193, 7, 0.55) !important;
+        border: 1px solid rgba(255, 152, 0, 0.9) !important;
+    }
+
+    @keyframes path-unreachable-flash {
+        0%   { background-color: rgba(255, 23, 68, 0.7) !important; }
+        100% { background-color: inherit; }
+    }
+
+    .map-tile.path-unreachable {
+        animation: path-unreachable-flash 0.6s ease-out;
+    }
+
+    .terrain-cost-badge {
+        font-size: 0.7rem;
+        padding: 1px 5px;
+    }
+
     .map-tile.fog-hidden {
         background-color: #000 !important;
         filter: brightness(0.3);
@@ -116,6 +147,102 @@
         bottom: 0;
         background-color: rgba(0, 0, 0, 0.8);
         pointer-events: none;
+    }
+
+    /* Collaboration styles */
+    .user-cursor {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 100;
+        transform: translate(-50%, -50%);
+        transition: left 0.05s, top 0.05s;
+        opacity: 0.8;
+    }
+
+    .user-cursor::after {
+        content: attr(data-username);
+        position: absolute;
+        top: 22px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    .presence-panel {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        padding: 12px;
+        min-width: 160px;
+        z-index: 1000;
+    }
+
+    .presence-panel h6 {
+        margin-bottom: 10px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .presence-user {
+        display: flex;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+    }
+
+    .presence-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .connection-status {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 1001;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .connection-status.connected {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .connection-status.disconnected {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .connection-status.connecting {
+        background-color: #ffc107;
+        color: black;
+    }
+
+    .map-tile.remote-update {
+        animation: remote-flash 0.3s ease-out;
+    }
+
+    @keyframes remote-flash {
+        0% { outline: 3px solid #3498db; }
+        100% { outline: none; }
     }
 </style>
 {% endblock %}
@@ -166,6 +293,18 @@
             </div>
         {% endif %}
     </div>
+
+    <!-- Real-time Collaboration UI -->
+    {% if can_edit %}
+    <div id="connectionStatus" class="connection-status connecting">
+        <i class="bi bi-wifi"></i> Connecting...
+    </div>
+
+    <div id="presencePanel" class="presence-panel" style="display: none;">
+        <h6><i class="bi bi-people"></i> Editors Online</h6>
+        <div id="presenceList"></div>
+    </div>
+    {% endif %}
 
     <div class="row">
         <!-- Map Builder Tools (Left Sidebar) -->
@@ -221,6 +360,9 @@
                         <button type="button" class="btn btn-outline-secondary" id="fogModeBtn" onclick="setMode('fog')">
                             <i class="bi bi-cloud-fog"></i> Fog of War
                         </button>
+                        <button type="button" class="btn btn-outline-warning" id="pathfindModeBtn" onclick="setMode('pathfind')">
+                            <i class="bi bi-signpost-split"></i> Pathfind
+                        </button>
                     </div>
 
                     <div id="measureInfo" class="alert alert-secondary small" style="display: none;">
@@ -234,6 +376,60 @@
                             To: <span id="endCoords">-</span>
                         </div>
                         <button class="btn btn-sm btn-secondary mt-2" onclick="clearMeasurement()">Clear</button>
+                    </div>
+
+                    <div id="pathfindInfo" class="alert alert-warning small" style="display: none;">
+                        <strong><i class="bi bi-signpost-split"></i> Pathfind Mode</strong><br>
+                        Click a <span class="text-success fw-bold">start</span> tile, then an
+                        <span class="text-danger fw-bold">end</span> tile to find the optimal
+                        path accounting for terrain costs.
+
+                        <div class="mt-2">
+                            <label class="fw-bold">Movement Budget (optional):</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" id="movementBudget" class="form-control"
+                                       placeholder="e.g. 10" min="1" max="9999">
+                                <span class="input-group-text">pts</span>
+                            </div>
+                            <div class="form-text">Enter your character's movement allowance.</div>
+                        </div>
+
+                        <div id="pathfindDisplay" class="mt-2 p-2 bg-white rounded border" style="display: none;">
+                            <div id="pathReachableStatus" class="fw-bold mb-1"></div>
+                            <table class="table table-sm table-borderless mb-1" style="font-size:0.8rem;">
+                                <tr>
+                                    <td class="text-muted">Path tiles:</td>
+                                    <td><strong id="pathLength">-</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Movement cost:</td>
+                                    <td><strong id="pathCost">-</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Direct dist.:</td>
+                                    <td><strong id="pathDirectDist">-</strong></td>
+                                </tr>
+                            </table>
+                            <div id="pathBudgetStatus" class="mb-1" style="display:none;"></div>
+                            <div id="pathTerrainBreakdown" class="text-muted" style="font-size:0.75rem;"></div>
+                        </div>
+
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-secondary" onclick="clearPathfind()">
+                                <i class="bi bi-x-circle"></i> Clear
+                            </button>
+                        </div>
+
+                        <details class="mt-2">
+                            <summary class="fw-bold" style="cursor:pointer;">Terrain Cost Reference</summary>
+                            <table class="table table-sm table-borderless mt-1 mb-0" style="font-size:0.75rem;">
+                                <tr><td>Street / Floor / Tunnel</td><td><span class="badge bg-success terrain-cost-badge">1 pt</span></td></tr>
+                                <tr><td>Forest / Stairs / Window</td><td><span class="badge bg-warning text-dark terrain-cost-badge">2 pts</span></td></tr>
+                                <tr><td>Mountain</td><td><span class="badge bg-orange terrain-cost-badge" style="background:#fd7e14;">3 pts</span></td></tr>
+                                <tr><td>Water</td><td><span class="badge bg-danger terrain-cost-badge">4 pts</span></td></tr>
+                                <tr><td>Wall / Building / Void</td><td><span class="badge bg-dark terrain-cost-badge">Impassable</span></td></tr>
+                            </table>
+                        </details>
                     </div>
 
                     <div id="fogInfo" class="alert alert-secondary small" style="display: none;">
@@ -282,7 +478,9 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="map-container">
+                    <div class="map-container" style="position: relative;">
+                        <!-- Container for other users' cursors -->
+                        <div id="cursorContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50;"></div>
                         <div class="map-grid" style="grid-template-columns: repeat({{ map.width }}, {{ map.tile_size }}px);">
                             {% for tile in tiles %}
                                 <div class="map-tile"
@@ -524,8 +722,10 @@
         document.getElementById('paintModeBtn').classList.remove('active');
         document.getElementById('measureModeBtn').classList.remove('active');
         document.getElementById('fogModeBtn').classList.remove('active');
+        document.getElementById('pathfindModeBtn').classList.remove('active');
         document.getElementById('measureInfo').style.display = 'none';
         document.getElementById('fogInfo').style.display = 'none';
+        document.getElementById('pathfindInfo').style.display = 'none';
 
         if (mode === 'paint') {
             document.getElementById('paintModeBtn').classList.add('active');
@@ -536,6 +736,10 @@
         } else if (mode === 'fog') {
             document.getElementById('fogModeBtn').classList.add('active');
             document.getElementById('fogInfo').style.display = 'block';
+        } else if (mode === 'pathfind') {
+            document.getElementById('pathfindModeBtn').classList.add('active');
+            document.getElementById('pathfindInfo').style.display = 'block';
+            clearPathfind();
         }
     }
 
@@ -628,6 +832,168 @@
         document.getElementById('startCoords').textContent = '-';
         document.getElementById('endCoords').textContent = '-';
     }
+
+    // ===== Pathfinding Mode =====
+    let pathfindStart = null;
+    let pathfindEnd = null;
+
+    function clearPathfind() {
+        document.querySelectorAll('.map-tile').forEach(t => {
+            t.classList.remove('path-start', 'path-end', 'path-tile');
+        });
+        pathfindStart = null;
+        pathfindEnd = null;
+        document.getElementById('pathfindDisplay').style.display = 'none';
+    }
+
+    function handlePathfindClick(tile) {
+        const x = parseInt(tile.dataset.x);
+        const y = parseInt(tile.dataset.y);
+
+        if (!pathfindStart) {
+            pathfindStart = { x, y };
+            tile.classList.add('path-start');
+        } else if (!pathfindEnd) {
+            pathfindEnd = { x, y };
+            tile.classList.add('path-end');
+            computePath();
+        } else {
+            clearPathfind();
+            handlePathfindClick(tile);
+        }
+    }
+
+    function computePath() {
+        if (!pathfindStart || !pathfindEnd) return;
+
+        showStatus('<i class="bi bi-arrow-repeat"></i> Computing path...', 'saving');
+
+        const formData = new FormData();
+        formData.append('start_x', pathfindStart.x);
+        formData.append('start_y', pathfindStart.y);
+        formData.append('end_x', pathfindEnd.x);
+        formData.append('end_y', pathfindEnd.y);
+
+        fetch('{% url "maps:pathfind" map.pk %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                displayPath(data);
+                showStatus(
+                    data.reachable
+                        ? '<i class="bi bi-check-circle"></i> Path found'
+                        : '<i class="bi bi-x-circle"></i> No path',
+                    data.reachable ? 'success' : 'error'
+                );
+            } else {
+                showStatus('<i class="bi bi-exclamation-circle"></i> ' + data.error, 'error');
+            }
+        })
+        .catch(() => {
+            showStatus('<i class="bi bi-exclamation-circle"></i> Failed to compute path', 'error');
+        });
+    }
+
+    function displayPath(data) {
+        document.querySelectorAll('.path-tile').forEach(t => t.classList.remove('path-tile'));
+        document.getElementById('pathfindDisplay').style.display = 'block';
+
+        if (!data.reachable) {
+            document.getElementById('pathReachableStatus').innerHTML =
+                '<span class="text-danger"><i class="bi bi-x-circle"></i> Destination unreachable</span>';
+            document.getElementById('pathLength').textContent = '-';
+            document.getElementById('pathCost').textContent = '-';
+            document.getElementById('pathDirectDist').textContent = '-';
+            document.getElementById('pathBudgetStatus').style.display = 'none';
+            document.getElementById('pathTerrainBreakdown').textContent = '';
+
+            const endTile = document.querySelector(
+                `[data-x="${pathfindEnd.x}"][data-y="${pathfindEnd.y}"]`
+            );
+            if (endTile) {
+                endTile.classList.add('path-unreachable');
+                setTimeout(() => endTile.classList.remove('path-unreachable'), 700);
+            }
+            return;
+        }
+
+        // Highlight path tiles (exclude start and end)
+        data.path.forEach((pos, idx) => {
+            if (idx === 0 || idx === data.path.length - 1) return;
+            const tile = document.querySelector(`[data-x="${pos.x}"][data-y="${pos.y}"]`);
+            if (tile) tile.classList.add('path-tile');
+        });
+
+        const directDist = Math.sqrt(
+            Math.pow(pathfindEnd.x - pathfindStart.x, 2) +
+            Math.pow(pathfindEnd.y - pathfindStart.y, 2)
+        ).toFixed(1);
+
+        document.getElementById('pathReachableStatus').innerHTML =
+            '<span class="text-success"><i class="bi bi-check-circle"></i> Path found</span>';
+        document.getElementById('pathLength').textContent = data.path_length + ' tiles';
+        document.getElementById('pathCost').textContent = data.total_cost + ' pts';
+        document.getElementById('pathDirectDist').textContent = directDist + ' tiles';
+
+        // Movement budget check
+        const budget = parseFloat(document.getElementById('movementBudget').value);
+        const budgetEl = document.getElementById('pathBudgetStatus');
+        if (!isNaN(budget) && budget > 0) {
+            budgetEl.style.display = 'block';
+            if (data.total_cost <= budget) {
+                budgetEl.innerHTML =
+                    `<span class="text-success"><i class="bi bi-check-circle"></i> Within budget (${data.total_cost} / ${budget} pts)</span>`;
+            } else {
+                budgetEl.innerHTML =
+                    `<span class="text-danger"><i class="bi bi-x-circle"></i> Over budget (${data.total_cost} / ${budget} pts)</span>`;
+            }
+        } else {
+            budgetEl.style.display = 'none';
+        }
+
+        // Terrain breakdown
+        const breakdown = data.terrain_breakdown;
+        const keys = Object.keys(breakdown);
+        const breakdownEl = document.getElementById('pathTerrainBreakdown');
+        if (keys.length > 0) {
+            const parts = keys.map(t => `${t}: ${breakdown[t]}`).join(', ');
+            breakdownEl.textContent = 'Terrain: ' + parts;
+        } else {
+            breakdownEl.textContent = '';
+        }
+    }
+
+    // Re-run path when budget changes
+    document.getElementById('movementBudget').addEventListener('input', function() {
+        if (pathfindStart && pathfindEnd) {
+            const display = document.getElementById('pathfindDisplay');
+            if (display.style.display !== 'none') {
+                const budget = parseFloat(this.value);
+                if (!isNaN(budget) && budget > 0) {
+                    const costEl = document.getElementById('pathCost');
+                    const cost = parseFloat(costEl.textContent);
+                    const budgetEl = document.getElementById('pathBudgetStatus');
+                    budgetEl.style.display = 'block';
+                    if (cost <= budget) {
+                        budgetEl.innerHTML =
+                            `<span class="text-success"><i class="bi bi-check-circle"></i> Within budget (${cost} / ${budget} pts)</span>`;
+                    } else {
+                        budgetEl.innerHTML =
+                            `<span class="text-danger"><i class="bi bi-x-circle"></i> Over budget (${cost} / ${budget} pts)</span>`;
+                    }
+                } else {
+                    document.getElementById('pathBudgetStatus').style.display = 'none';
+                }
+            }
+        }
+    });
 
     // Fog of War functions
     function toggleFogOfWar() {
@@ -730,6 +1096,8 @@
                 measureDistance(this);
             } else if (currentMode === 'fog') {
                 handleFogClick(this, e.shiftKey);
+            } else if (currentMode === 'pathfind') {
+                handlePathfindClick(this);
             }
         });
 
@@ -768,6 +1136,239 @@
     if (fogOfWarEnabled) {
         updateFogOfWar();
     }
+</script>
+
+<!-- Real-time Collaboration Script -->
+<script src="{% static 'js/map_collaboration.js' %}"></script>
+<script>
+    // Initialize collaboration client
+    const collabClient = new MapCollaborationClient({{ map.pk }}, {
+        onConnected: function(data) {
+            console.log('[Collab] Connected as', data.username);
+            updateConnectionStatus('connected', data.username);
+            document.getElementById('presencePanel').style.display = 'block';
+        },
+
+        onDisconnected: function(code) {
+            console.log('[Collab] Disconnected:', code);
+            if (code === 4001) {
+                updateConnectionStatus('disconnected', 'Authentication required');
+            } else if (code === 4003) {
+                updateConnectionStatus('disconnected', 'Access denied');
+            } else {
+                updateConnectionStatus('disconnected', 'Reconnecting...');
+            }
+        },
+
+        onTileUpdate: function(data) {
+            // Apply tile changes from other users (or confirmation of our own)
+            data.tiles.forEach(tile => {
+                const tileEl = document.querySelector(`[data-x="${tile.x}"][data-y="${tile.y}"]`);
+                if (tileEl) {
+                    tileEl.style.backgroundColor = tile.color;
+                    tileEl.dataset.terrain = tile.terrain_type;
+                    tileEl.title = `${tile.terrain_type} (${tile.x}, ${tile.y})`;
+
+                    // Flash effect for remote updates (not our own)
+                    if (data.user_id !== collabClient.userId) {
+                        tileEl.classList.add('remote-update');
+                        setTimeout(() => tileEl.classList.remove('remote-update'), 300);
+                    }
+                }
+            });
+        },
+
+        onObjectUpdate: function(data) {
+            // Handle object updates - reload for simplicity
+            console.log('[Collab] Object update:', data.action, data.object);
+            if (data.user_id !== collabClient.userId) {
+                showCollabNotification(data.username + ' modified an object', 'info');
+                // For now, reload to show object changes
+                setTimeout(() => location.reload(), 1000);
+            }
+        },
+
+        onFogUpdate: function(data) {
+            // Update fog of war state from other users
+            if (data.user_id !== collabClient.userId) {
+                revealedTiles = data.revealed_tiles || [];
+                fogOfWarEnabled = data.fog_enabled;
+                document.getElementById('fogToggle').checked = fogOfWarEnabled;
+                document.getElementById('fogControls').style.display = fogOfWarEnabled ? 'block' : 'none';
+                updateFogOfWar();
+                showCollabNotification('Fog of war updated', 'secondary');
+            }
+        },
+
+        onUserJoined: function(data) {
+            console.log('[Collab]', data.username, 'joined');
+            showCollabNotification(data.username + ' joined', 'success');
+        },
+
+        onUserLeft: function(data) {
+            console.log('[Collab]', data.username, 'left');
+            showCollabNotification(data.username + ' left', 'secondary');
+            removeUserCursor(data.user_id);
+        },
+
+        onCursorMove: function(data) {
+            updateUserCursor(data.user_id, data.username, data.x, data.y, data.color);
+        },
+
+        onPresenceUpdate: function(users) {
+            updatePresenceList(users);
+        },
+
+        onError: function(error) {
+            console.error('[Collab] Error:', error);
+            showCollabNotification(error.message, 'danger');
+        }
+    });
+
+    // Connect to collaboration server
+    collabClient.connect();
+
+    // Disconnect when page unloads
+    window.addEventListener('beforeunload', () => {
+        collabClient.disconnect();
+    });
+
+    // Helper functions for collaboration UI
+
+    function updateConnectionStatus(status, message) {
+        const statusEl = document.getElementById('connectionStatus');
+        statusEl.className = 'connection-status ' + status;
+
+        const icons = {
+            'connected': 'bi-wifi',
+            'disconnected': 'bi-wifi-off',
+            'connecting': 'bi-wifi'
+        };
+
+        const labels = {
+            'connected': 'Connected',
+            'disconnected': 'Disconnected',
+            'connecting': 'Connecting...'
+        };
+
+        statusEl.innerHTML = `<i class="bi ${icons[status]}"></i> ${labels[status]}${message ? ' - ' + message : ''}`;
+    }
+
+    function updatePresenceList(users) {
+        const list = document.getElementById('presenceList');
+        if (users.length === 0) {
+            list.innerHTML = '<div class="text-muted small">No other editors</div>';
+            return;
+        }
+
+        list.innerHTML = users.map(user => `
+            <div class="presence-user">
+                <span class="presence-dot" style="background-color: ${user.user_color || '#999'}"></span>
+                <span>${user.username}${user.is_owner ? ' <span class="badge bg-primary badge-sm">Owner</span>' : ''}</span>
+            </div>
+        `).join('');
+    }
+
+    function updateUserCursor(userId, username, x, y, color) {
+        let cursor = document.getElementById('cursor-' + userId);
+
+        if (!cursor) {
+            cursor = document.createElement('div');
+            cursor.id = 'cursor-' + userId;
+            cursor.className = 'user-cursor';
+            cursor.dataset.username = username;
+            document.getElementById('cursorContainer').appendChild(cursor);
+        }
+
+        // Calculate pixel position from tile coordinates
+        const tileSize = {{ map.tile_size }};
+        const gap = 1; // Gap between tiles
+        const padding = 10; // Padding in map-grid
+        const left = (x * (tileSize + gap)) + (tileSize / 2) + padding;
+        const top = (y * (tileSize + gap)) + (tileSize / 2) + padding;
+
+        cursor.style.left = left + 'px';
+        cursor.style.top = top + 'px';
+        cursor.style.backgroundColor = color;
+        cursor.style.border = '2px solid ' + color;
+    }
+
+    function removeUserCursor(userId) {
+        const cursor = document.getElementById('cursor-' + userId);
+        if (cursor) {
+            cursor.remove();
+        }
+    }
+
+    function showCollabNotification(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} position-fixed`;
+        toast.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 8px 16px; font-size: 0.9rem;';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Override savePendingUpdates to use WebSocket when connected
+    const originalSavePendingUpdates = savePendingUpdates;
+    savePendingUpdates = function() {
+        if (pendingUpdates.size === 0) return;
+
+        // Convert pending updates to tile array
+        const tiles = Array.from(pendingUpdates.values()).map(update => ({
+            x: parseInt(update.x),
+            y: parseInt(update.y),
+            terrain_type: selectedTerrain,
+            color: selectedColor
+        }));
+
+        pendingUpdates.clear();
+
+        if (collabClient.isConnected()) {
+            // Use WebSocket
+            collabClient.sendTileUpdate(tiles);
+            showStatus('<i class="bi bi-check-circle"></i> Synced', 'success');
+        } else {
+            // Fallback to AJAX
+            showStatus(`<i class="bi bi-arrow-repeat"></i> Saving ${tiles.length} tile(s)...`, 'saving');
+
+            Promise.all(tiles.map(tile => {
+                const formData = new FormData();
+                formData.append('x', tile.x);
+                formData.append('y', tile.y);
+                formData.append('terrain_type', tile.terrain_type);
+                formData.append('color', tile.color);
+
+                return fetch('{% url "maps:tile_update" map.pk %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                }).then(response => response.json());
+            }))
+            .then(results => {
+                const successCount = results.filter(r => r.success).length;
+                showStatus(`<i class="bi bi-check-circle"></i> Saved ${successCount} tile(s)`, 'success');
+            })
+            .catch(error => {
+                showStatus('<i class="bi bi-exclamation-circle"></i> Failed to save', 'error');
+            });
+        }
+    };
+
+    // Track cursor movement over map tiles for collaboration
+    document.querySelectorAll('.map-tile').forEach(tile => {
+        tile.addEventListener('mousemove', function(e) {
+            if (collabClient.isConnected()) {
+                const x = parseInt(this.dataset.x);
+                const y = parseInt(this.dataset.y);
+                collabClient.sendCursorMove(x, y);
+            }
+        });
+    });
 </script>
 {% endif %}
 {% endblock %}

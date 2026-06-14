@@ -36,6 +36,9 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 
 INSTALLED_APPS = [
+    # Daphne must be listed before django.contrib.staticfiles for ASGI
+    'daphne',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,6 +49,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'crispy_forms',
     'crispy_bootstrap5',
+    'channels',
 
     # Local apps
     'accounts',
@@ -89,6 +93,33 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'shadowrun_campaign.wsgi.application'
+
+# ASGI Application for Django Channels (WebSocket support)
+ASGI_APPLICATION = 'shadowrun_campaign.asgi.application'
+
+# Channel Layers Configuration for real-time collaborative editing
+# Use Redis for production, InMemoryChannelLayer for development
+if os.getenv('USE_REDIS', 'False') == 'True':
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [(
+                    os.getenv('REDIS_HOST', '127.0.0.1'),
+                    int(os.getenv('REDIS_PORT', 6379))
+                )],
+                'capacity': 1500,
+                'expiry': 10,
+            },
+        },
+    }
+else:
+    # InMemoryChannelLayer for development (single server only)
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 
 # Database

@@ -16,6 +16,7 @@ from .generators import (
     generate_maze_map
 )
 from .cover_system import calculate_cover_positions
+from .pathfinding import astar, TERRAIN_COSTS
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +105,8 @@ def map_detail(request, pk):
         tiles = map_obj.tiles.all()
         objects = map_obj.map_objects.all()
 
-        # Check if user can edit (only owner)
-        can_edit = map_obj.owner == request.user
+        # Check if user can edit (owner or shared_with users)
+        can_edit = map_obj.owner == request.user or request.user in map_obj.shared_with.all()
 
         context = {
             'map': map_obj,
@@ -181,8 +182,12 @@ def map_tile_update(request, pk):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
 
-    # Get the map and verify ownership
-    map_obj = get_object_or_404(models.Map, pk=pk, owner=request.user)
+    # Get the map and verify permission (owner or shared_with user)
+    map_obj = get_object_or_404(models.Map, pk=pk)
+
+    # Check if user has edit permission
+    if map_obj.owner != request.user and request.user not in map_obj.shared_with.all():
+        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
     try:
         # Get tile coordinates and new terrain type from request
@@ -216,6 +221,11 @@ def map_tile_update(request, pk):
                 tile.is_transparent = False
             else:
                 tile.is_transparent = True
+
+            # Sync movement_cost with terrain cost table
+            terrain_cost = TERRAIN_COSTS.get(terrain_type)
+            if terrain_cost is not None:
+                tile.movement_cost = terrain_cost
 
             tile.save()
 
@@ -902,6 +912,63 @@ def preset_delete(request, pk):
         logger.error(f"Error deleting preset {pk} for user {request.user.username}: {str(e)}", exc_info=True)
         messages.error(request, 'An error occurred while deleting the preset.')
         return redirect('maps:preset_list')
+
+
+@login_required
+def map_pathfind(request, pk):
+    """AJAX endpoint: A* pathfinding with terrain cost between two tiles"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+    map_obj = get_object_or_404(models.Map, pk=pk)
+
+    if not (map_obj.owner == request.user or
+            request.user in map_obj.shared_with.all() or
+            map_obj.is_public):
+        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+
+    try:
+        start_x = int(request.POST.get('start_x'))
+        start_y = int(request.POST.get('start_y'))
+        end_x = int(request.POST.get('end_x'))
+        end_y = int(request.POST.get('end_y'))
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid coordinates'}, status=400)
+
+    if not (0 <= start_x < map_obj.width and 0 <= start_y < map_obj.height and
+            0 <= end_x < map_obj.width and 0 <= end_y < map_obj.height):
+        return JsonResponse({'success': False, 'error': 'Coordinates out of bounds'}, status=400)
+
+    tiles_dict = {
+        (t.x, t.y): {
+            'is_walkable': t.is_walkable,
+            'terrain_type': t.terrain_type,
+            'movement_cost': t.movement_cost,
+        }
+        for t in map_obj.tiles.all()
+    }
+
+    result = astar(
+        tiles_dict,
+        (start_x, start_y),
+        (end_x, end_y),
+        map_obj.width,
+        map_obj.height,
+    )
+
+    logger.info(
+        f"Pathfind on map {pk} from ({start_x},{start_y}) to ({end_x},{end_y}): "
+        f"reachable={result['reachable']} cost={result['total_cost']}"
+    )
+
+    return JsonResponse({
+        'success': True,
+        'path': [{'x': p[0], 'y': p[1]} for p in result['path']],
+        'total_cost': result['total_cost'],
+        'reachable': result['reachable'],
+        'path_length': len(result['path']),
+        'terrain_breakdown': result['terrain_breakdown'],
+    })
 
 
 @login_required

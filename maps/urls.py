@@ -10,6 +10,7 @@ urlpatterns = [
     path('<int:pk>/edit/', views.map_edit, name='edit'),
     path('<int:pk>/delete/', views.map_delete, name='delete'),
     path('<int:pk>/tile/update/', views.map_tile_update, name='tile_update'),
+    path('<int:pk>/pathfind/', views.map_pathfind, name='pathfind'),
     path('generate/', views.map_generate, name='generate'),
     path('generate/preview/', views.map_generate_preview, name='generate_preview'),
 
